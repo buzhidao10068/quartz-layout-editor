@@ -14,22 +14,27 @@ This project ships one artifact: `index.html`. No build step, no package manager
 
 ## Structure
 
-Three inline sections in `index.html`, in this order:
+Inline sections in `index.html`, in this order:
 
 1. `<style>` — design tokens on `:root`, then layout, then components
 2. `<body>` markup — static skeleton; dynamic content gets rendered into known container IDs
-3. `<script>` — plain script, no modules (`file://` blocks ES module imports under CORS)
+3. `<script type="text/plain" id="default-config">` — the bundled default config as raw text
+4. `<script id="core">` — pure logic: catalog data, normalize, parse, emit, diff, slot ordering
+5. `<script>` — UI: state object, render functions, event handlers, init
 
-Keep the script organized in this order so a reader can follow data flow top to bottom:
+Both script blocks are plain scripts, not modules (`file://` blocks ES module imports under CORS).
+
+### The core / UI boundary
+
+`core` must not reference `document`, `window`, `localStorage`, or any other browser global. Tests load the `core` block's source into a Node `vm` context and call its functions directly, so a single DOM reference in `core` breaks every test.
+
+If a function needs both parsing and DOM access, split it: the pure half goes in `core`, the DOM half in the UI script.
+
+Within each block, order code so a reader can follow data flow top to bottom:
 
 ```
-constants / catalog data
-  → parse functions
-  → emit functions
-  → state object
-  → render functions
-  → event handlers
-  → init
+core:  catalog data → normalize → parse → emit → diff → slot ordering
+UI:    state object → render functions → event handlers → init
 ```
 
 ---
@@ -104,11 +109,15 @@ Prefer `textContent` over `innerHTML` for single values.
 
 ## Verification
 
-There is no lint or typecheck step. Verification is manual and must actually be performed, not assumed:
+There is no lint or typecheck step. Before claiming a change works:
 
-1. Open the file from `file://` with the network disconnected.
-2. Walk the primary flow with the keyboard only.
-3. Check both light and dark mode.
-4. Narrow the window to phone width and confirm no horizontal scroll.
+1. `node --test tests/` — required for any change to the `core` block. The AC10 tests inside it call `tests/yaml_paths_diff.py` (Python + PyYAML).
+2. For UI changes: open the file from `file://` with the network disconnected, walk the primary flow using only the keyboard, check light and dark mode, and narrow to phone width to confirm there is no horizontal scroll.
 
-When a change touches parsing or output, run the fixture assertions described in the task's `implement.md` before claiming the change works.
+A skipped test is not a passed test. Tests that depend on `fixtures/local/` skip when it is absent; report them as skipped.
+
+---
+
+## Off-limits
+
+The user's Quartz site lives at `H:\learn\github\buzhidao10068\Quartz`. Reading and copying files from it is allowed. Never modify or delete anything there, and never run `git`, `npm`, `npx`, or a Quartz build inside it — builds write to `public/`, `.quartz/`, and `node_modules/`. Stage 0 of the task copies its real config to `fixtures/local/real-config.yaml` once; after that, use the copy.

@@ -12,10 +12,14 @@
 
 ```js
 state = {
-  rawLines: [],        // 导入文件按行切分，原始内容，只读
-  srcName: "",         // 文件名，顶栏显示
-  srcTime: null,       // 导入时间
-  isDemo: true,        // 是否内嵌演示数据
+  rawLines: [],        // 载入文本按行切分（已去掉 \r 和开头的 BOM），只读
+  source: {            // 配置从哪来，顶栏显示
+    kind: "default",   //   "default" 内置默认 | "file" 文件选择 | "paste" 粘贴
+    name: "",          //   文件名；粘贴时为空
+    loadedAt: null,    //   载入时间
+  },
+  finalNewline: true,  // 原文件最后有没有换行，输出时保持一致
+  dirty: false,        // 是否有未生成的改动，切换模式前用来提示
   entries: [],         // 插件条目，见下
   groups: {},          // layout.groups
   byPageType: {},      // layout.byPageType
@@ -63,6 +67,28 @@ state = {
 - 用户手写的注释和分组空行
 
 round-trip 之后这些全变样，用户会看到一份「哪里都改了」的 diff，无法确认工具只动了该动的地方。违反 R6.1 和 AC2。
+
+### 载入：三条路径，一个入口
+
+```
+内置默认 ─┐
+文件选择 ─┼─→ load(text, source) ─→ normalize ─→ 解析 ─→ state
+粘贴     ─┘
+```
+
+- **内置默认**：官方配置嵌在 `<script type="text/plain" id="default-config">` 里，读 `textContent`。HTML 解析器会保留开始标签后面那个换行，所以要去掉开头的一个 `\n`，否则第一行会变成空行。
+- **文件选择**：`file.text()` 按 UTF-8 解码。
+- **粘贴**：读弹窗里 `<textarea>` 的 `value`。浏览器会把 textarea 里的 CRLF 规范化成 LF，所以粘贴模式拿不到原文件的换行风格。这不影响使用，原因见 PRD R1.6。
+
+`normalize(text)`：
+
+1. 去掉开头的 `﻿`（`file.text()` 会自己去掉，这一步是防御性的）
+2. 记下 `finalNewline = /\r?\n$/.test(text)`
+3. 按 `/\r?\n/` 切行；有末尾换行时，丢掉切出来的最后一个空串
+
+输出：`lines.join("\n") + (finalNewline ? "\n" : "")`。统一 LF、不带 BOM。
+
+切换来源前若 `state.dirty` 为真，先在界面内确认再丢弃改动（用行内确认，不用 `confirm()`，见 spec 的 Forbidden patterns）。
 
 ### 实际方案：扫描式提取 + 定向回写
 
@@ -129,12 +155,14 @@ center 内纵向排 `beforeBody` → `pageBody`（固定、不可放置）→ `a
 
 必须复刻运行时的 `resolveGroups` 逻辑，否则预览会骗人：
 
-1. 收集该槽位所有 entry，按 priority 升序（稳定排序）
+1. 收集该槽位所有 entry：显式条目先入列，隐式条目后入列，再按 priority 升序稳定排序。所以 priority 相同时显式的排在前面，这和运行时两轮循环的顺序一致
 2. 带 `group` 的，首次遇到时在该位置插入一个「组盒子」，有效优先级取 `groups[g].priority ?? 该成员的 priority`
 3. 组内成员按各自 priority 升序
 4. 组盒子与散装组件混在一起，按有效优先级再排一次
 
-隐式放置的 entry（`enabled: true` 且无 `layout`）也要参与：按 manifest 的 defaultPosition / defaultPriority 加入，视觉上标为虚线。这是 R4.1 的 UI 诚实性要求 —— 不画出来，C1 就在界面上变成一个谎。
+隐式放置的 entry（`enabled: true` 且无 `layout`）也要参与：按 manifest 的 defaultPosition / defaultPriority 加入，视觉上标为虚线。这是 R4.1 的 UI 诚实性要求 —— 不画出来，C1 就在界面上变成一个谎。注意运行时对隐式条目不应用 display / condition / group，预览也不应用。
+
+载入的配置里若有 `position` 不在六个合法值之内（典型是 `body`：过时的 JSON schema 会在 VS Code 里自动补全它），运行时会静默丢掉这个组件。这类条目放进托盘并标警告「position: body 不是有效槽位，运行时会静默丢弃」，不要假装它在某个槽位里。
 
 ### 拖拽
 
@@ -165,3 +193,41 @@ CSS 自定义属性定义在 `:root`，暗色在 `@media (prefers-color-scheme: 
 - 工具是只读消费者：它从不写用户的 `quartz.config.yaml`，只输出文本让用户自己粘。误操作的后果上限是「粘了一份不想要的配置」，git 可回滚。
 - 解析失败时（遇到不认识的语法）：不静默降级，明确报错并指出行号，拒绝进入编辑态。宁可不能用，不要生成错配置。
 - 若导入的配置里 `plugins` 段缺失或为空，视为解析失败。
+
+## 九、可测试性
+
+### 脚本拆成两块
+
+```html
+<script id="core">  纯逻辑：组件目录、normalize、解析、回写、diff、槽位排序
+<script>            界面：渲染、拖拽、事件
+```
+
+`core` 里不允许出现 `document`、`window`、`localStorage`。这样测试能在 Node 里用 `vm` 直接执行这段源码、拿到里面的函数，不需要浏览器，也不需要装任何依赖。
+
+### 三层测试
+
+| 层 | 工具 | 测什么 | 对应 AC |
+|---|---|---|---|
+| core 单元测试 | `node --test`（Node 24 自带） | 解析断言、幂等性、定向改动、槽位排序 | AC1–AC4、AC12 |
+| 独立解析器校验 | Python + PyYAML 6.0.3（本机已装） | 输出能被另一个解析器读懂；只有被编辑的路径变了；取值符合 `types.ts` | AC10 |
+| 界面检查 | Playwright 浏览器自动化 | 托盘两种状态、键盘路径、明暗主题、手机宽度、断网打开 | AC5–AC9、AC11 |
+
+AC10 的流程：Node 测试用 core 施加一组已知改动 → 输出写进临时文件 → 调 `tests/yaml_paths_diff.py` 列出输入和输出之间变化的 YAML 路径 → 断言它等于预期集合。
+
+测试脚本放 `tests/`，只是开发工具，不进产物，不违反「产物零依赖」。
+
+### 测试夹具
+
+| 文件 | 来源 | 进不进仓库 |
+|---|---|---|
+| `fixtures/default-config.yaml` | Quartz v5 官方 `quartz.config.default.yaml` | 进（公开内容） |
+| `fixtures/local/real-config.yaml` | 用户站点配置的只读副本 | 不进（`.gitignore`），因为含 giscus ID 和 baseUrl |
+
+CRLF、带 BOM、无末尾换行三种变体由测试在运行时从上面两份生成，不另存文件。
+
+`fixtures/local/` 不存在时（比如别人 clone 了这个仓库），依赖它的测试标记为跳过，而不是失败。
+
+### 用户站点目录只读
+
+`H:\learn\github\buzhidao10068\Quartz` 允许读和复制，不允许修改、删除，不允许在里面执行 git、npm、npx。复制真实配置是唯一需要碰它的地方，只做一次。
