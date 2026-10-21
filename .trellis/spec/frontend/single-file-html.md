@@ -111,10 +111,18 @@ Prefer `textContent` over `innerHTML` for single values.
 
 There is no lint or typecheck step. Before claiming a change works:
 
-1. `node --test tests/` — required for any change to the `core` block. The AC10 tests inside it call `tests/yaml_paths_diff.py` (Python + PyYAML).
+1. `node --test tests/core.test.mjs` — required for any change to the `core` block. The AC10 tests inside it call `tests/yaml_paths_diff.py` (Python + PyYAML). Use an explicit file path: this Windows Node 24 installation does not discover tests from a `tests/` directory argument.
 2. For UI changes: open the file from `file://` with the network disconnected, walk the primary flow using only the keyboard, check light and dark mode, and narrow to phone width to confirm there is no horizontal scroll.
 
 A skipped test is not a passed test. Tests that depend on `fixtures/local/` skip when it is absent; report them as skipped.
+
+### Round-trip and type safeguards
+
+- Keep source spans immutable and apply patches from the end toward the beginning. When multiple insertions share the same line, apply them in reverse creation order so their final order stays correct. Test simultaneous insertion of `enabled`, plugin `layout`, and a root `layout` section.
+- Patch root `groups` and `byPageType` independently. Do not regenerate the untouched sibling section merely because one subsection changed.
+- Read actual Quartz runtime types rather than inferring from field names. Group `wrap` is `nowrap | wrap | wrap-reverse`, not a boolean. Explicit edited plugin layouts require both `position` and `priority`.
+- Automatic priority renumbering intentionally changes affected neighbors and group priorities. Test single-plugin-only semantic diffs with renumbering disabled, and explain the distinction in the UI documentation.
+- The browser check uses `PLAYWRIGHT_MODULE` and optionally `BROWSER_EXECUTABLE`; never introduce a runtime dependency or a personal absolute path into the shipped HTML. Keyboard and grip-based drag tests must call the same pure core movement functions.
 
 ---
 

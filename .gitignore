@@ -15,3 +15,5 @@ desktop.ini
 # Local scratch
 /tmp/
 /scratch/
+
+fixtures/local/

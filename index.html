@@ -1,0 +1,1392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quartz Layout Editor 0.1 · 布局编辑器</title>
+<meta name="description" content="完全离线的 Quartz v5 布局编辑器：拖动、调整、复制配置。">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f5f3ed;
+    --surface: #fffcf6;
+    --surface-raised: #ffffff;
+    --surface-muted: #eeeee7;
+    --ink: #273c3a;
+    --muted: #61736e;
+    --line: #d9e0d7;
+    --teal: #247e76;
+    --teal-strong: #16655f;
+    --teal-soft: #e2f0e8;
+    --amber: #835718;
+    --amber-soft: #fff0d2;
+    --danger: #ae4945;
+    --danger-soft: #fce9e4;
+    --shadow: 0 12px 38px #304a3b0a;
+    --radius: 18px;
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #172322;
+      --surface: #202e2b;
+      --surface-raised: #263732;
+      --surface-muted: #1b2926;
+      --ink: #e3ece4;
+      --muted: #a5b8ad;
+      --line: #3c5149;
+      --teal: #8bc7b3;
+      --teal-strong: #afe1cf;
+      --teal-soft: #2c4840;
+      --amber: #efca88;
+      --amber-soft: #473b24;
+      --danger: #f2a59a;
+      --danger-soft: #472e2b;
+      --shadow: 0 12px 38px #0000001f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #172322;
+    --surface: #202e2b;
+    --surface-raised: #263732;
+    --surface-muted: #1b2926;
+    --ink: #e3ece4;
+    --muted: #a5b8ad;
+    --line: #3c5149;
+    --teal: #8bc7b3;
+    --teal-strong: #afe1cf;
+    --teal-soft: #2c4840;
+    --amber: #efca88;
+    --amber-soft: #473b24;
+    --danger: #f2a59a;
+    --danger-soft: #472e2b;
+    --shadow: 0 12px 38px #0000001f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.6; }
+  button, input, select, textarea { font: inherit; }
+  button, select, input, textarea { max-width: 100%; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .48; }
+  button, input, select, textarea { border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--surface-raised); }
+  button { min-height: 38px; padding: 7px 12px; font-weight: 600; }
+  button:hover:not(:disabled) { border-color: var(--teal); background: var(--teal-soft); }
+  input, select, textarea { width: 100%; min-width: 0; padding: 8px 10px; }
+  input[type="checkbox"] { width: 17px; height: 17px; margin: 0; accent-color: var(--teal); flex: 0 0 auto; }
+  textarea { resize: vertical; }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+  h1, h2, h3, p { margin: 0; }
+  h1 { font-size: clamp(22px, 2.2vw, 30px); line-height: 1.3; font-weight: 750; letter-spacing: -.6px; }
+  h2 { font-size: 16px; font-weight: 750; }
+  h3 { font-size: 14px; }
+  code, .mono { font-family: Consolas, "SFMono-Regular", monospace; }
+  [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .skip-link { position: fixed; top: -80px; left: 16px; padding: 10px 16px; background: var(--surface); z-index: 100; color: var(--teal); }
+  .skip-link:focus { top: 12px; }
+  .app-shell { max-width: 1820px; padding: 30px 32px 0; margin: auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand-mark { width: 48px; height: 48px; border-radius: 15px; background: var(--teal); color: var(--surface); display: grid; grid-template-columns: repeat(2, 9px); grid-template-rows: repeat(2, 9px); gap: 4px; place-content: center; transform: rotate(-4deg); flex: 0 0 auto; box-shadow: var(--shadow); }
+  .brand-mark span { border: 1.5px solid currentColor; border-radius: 2px; }
+  .brand-mark span:last-child { background: currentColor; }
+  .eyebrow { color: var(--teal-strong); font-size: 10px; letter-spacing: 2px; font-weight: 800; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-top: 5px; font-size: 12px; }
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .primary { background: var(--teal-strong); color: var(--surface); border-color: var(--teal-strong); }
+  .primary:hover:not(:disabled) { background: var(--teal); color: var(--surface); }
+  .quiet { background: transparent; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 650; background: var(--teal-soft); color: var(--teal-strong); overflow-wrap: anywhere; }
+  .pill.neutral { background: var(--surface-muted); color: var(--muted); }
+  .pill.warn { background: var(--amber-soft); color: var(--amber); }
+  .input-panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 16px 20px; margin-bottom: 22px; }
+  .source-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .source-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .source-name { font-weight: 700; overflow-wrap: anywhere; }
+  .small { font-size: 12px; color: var(--muted); }
+  .source-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+  .source-actions button { min-height: 34px; padding: 5px 10px; font-size: 12px; }
+  .notice { padding: 11px 13px; border: 1px solid var(--line); background: var(--surface-muted); border-radius: 10px; margin-top: 12px; font-size: 12px; overflow-wrap: anywhere; }
+  .notice.warning { background: var(--amber-soft); color: var(--amber); border-color: var(--amber); }
+  .notice.error { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+  .notice .toolbar { margin-top: 8px; }
+  .paste-area { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .paste-area textarea { min-height: 160px; margin: 8px 0; font-family: Consolas, monospace; font-size: 12px; }
+  .workspace { display: grid; grid-template-columns: 230px minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .workspace > *, .panel, .slot, .card, .group-container, .frame-center { min-width: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .panel-head { padding: 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panel-body { padding: 14px; }
+  .panel-intro { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .left-rail, .right-rail { display: grid; gap: 16px; }
+  .tray-zone { min-height: 112px; border: 1px dashed var(--line); border-radius: 12px; padding: 7px; background: var(--surface-muted); }
+  .plugin-list { display: grid; gap: 9px; }
+  .plugin-row { padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .plugin-row:last-child { border-bottom: 0; }
+  .plugin-row label { display: flex; align-items: flex-start; gap: 8px; }
+  .plugin-row input { margin-top: 4px; }
+  .plugin-name { font-weight: 600; overflow-wrap: anywhere; }
+  .plugin-source { font-size: 10px; color: var(--muted); overflow-wrap: anywhere; margin-top: 3px; }
+  details > summary { cursor: pointer; font-weight: 650; padding: 14px 16px; }
+  .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .board-heading h2 { font-size: 19px; }
+  .check-line { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .board-info { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .legend-dash { display: inline-block; width: 13px; height: 9px; border: 1px dashed var(--teal); margin-right: 4px; }
+  .frame { display: grid; grid-template-columns: minmax(150px, .95fr) minmax(160px, 1.25fr) minmax(150px, .95fr); grid-template-areas: "header header header" "left center right" "footer footer footer"; gap: 12px; padding: 16px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 22px; }
+  .frame-center { grid-area: center; display: flex; flex-direction: column; gap: 12px; }
+  .slot { border: 1px solid var(--line); border-radius: 13px; background: var(--surface); padding: 10px; align-self: stretch; }
+  .slot-header { grid-area: header; }
+  .slot-left { grid-area: left; }
+  .slot-right { grid-area: right; }
+  .slot-footer { grid-area: footer; }
+  .slot-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 7px; }
+  .slot-title span:first-child { font-weight: 750; font-size: 12px; }
+  .slot-code { color: var(--muted); font-size: 9px; letter-spacing: .3px; }
+  .slot-body { min-height: 54px; }
+  .empty-slot { color: var(--muted); font-size: 11px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; padding: 13px 8px; pointer-events: none; }
+  .page-body { flex: 1; min-height: 230px; border: 1px dashed var(--line); border-radius: 13px; padding: 25px 18px; background: var(--paper); display: flex; flex-direction: column; justify-content: center; }
+  .page-body .eyebrow { font-size: 9px; }
+  .page-body h3 { font-family: Georgia, "Songti SC", serif; font-size: 24px; margin: 10px 0; font-weight: 500; }
+  .page-body .small { line-height: 1.8; }
+  .text-line { height: 6px; border-radius: 5px; background: var(--line); margin-top: 11px; width: 90%; }
+  .text-line.short { width: 58%; }
+  .body-badge { align-self: flex-start; margin-top: 22px; font-size: 10px; color: var(--muted); }
+  .card { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface-raised); box-shadow: 0 2px 6px #213e2f05; }
+  .card.implicit { border-style: dashed; border-color: var(--teal); }
+  .card.disabled { background: var(--surface-muted); color: var(--muted); }
+  .card.selected { border: 2px solid var(--teal); padding: 9px; box-shadow: 0 0 0 2px var(--teal-soft); }
+  .card-main { display: flex; align-items: flex-start; gap: 6px; }
+  .drag-grip { color: var(--muted); font-size: 15px; line-height: 1.4; cursor: grab; }
+  .card-label { min-width: 0; flex: 1; }
+  .card-name { display: block; padding: 0; min-height: 0; border: 0; background: transparent; text-align: left; line-height: 1.45; font-size: 12px; font-weight: 750; overflow-wrap: anywhere; }
+  .card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .card-badges .pill { font-size: 9px; padding: 1px 6px; }
+  .card-controls { display: grid; grid-template-columns: 28px 28px minmax(0, 1fr); gap: 4px; margin-top: 9px; }
+  .card-controls button { min-height: 29px; padding: 0; font-size: 13px; }
+  .card-controls select, .card-group-select { font-size: 10px; min-height: 29px; padding: 3px 5px; }
+  .card-group-select { margin-top: 5px; }
+  .group-container { background: var(--teal-soft); border: 1px solid var(--line); border-radius: 11px; padding: 8px; }
+  .group-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 5px; }
+  .group-name { font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+  .group-head button { font-size: 10px; min-height: 27px; padding: 2px 6px; }
+  .group-meta { font-size: 9px; color: var(--muted); margin-bottom: 3px; }
+  .drop-insert { height: 9px; border-radius: 5px; }
+  .drop-insert.is-drop-target { background: var(--teal); height: 13px; }
+  .slot-body.is-drop-target, .tray-zone.is-drop-target, .group-members.is-drop-target { outline: 2px dashed var(--teal); outline-offset: 2px; background: var(--teal-soft); }
+  .field { display: block; margin-bottom: 12px; }
+  .field > span { display: block; font-size: 12px; font-weight: 650; margin-bottom: 5px; }
+  .field small { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+  .form-divider { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+  .selection-empty { padding: 18px 7px; text-align: center; color: var(--muted); font-size: 12px; }
+  .selection-empty .empty-icon { font-size: 27px; color: var(--teal); margin-bottom: 8px; }
+  .selected-source { margin: 4px 0 14px; font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+  .page-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 14px; }
+  .page-tabs button { font-size: 10px; padding: 4px 5px; min-height: 32px; }
+  .page-tabs button[aria-selected="true"] { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-strong); }
+  .position-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .position-checks label { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+  fieldset { margin: 12px 0 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  legend { font-size: 11px; color: var(--muted); padding: 0 4px; }
+  .footer-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; font-size: 11px; color: var(--muted); }
+  .status { min-height: 23px; overflow-wrap: anywhere; }
+  .status[data-tone="error"] { color: var(--danger); }
+  .status[data-tone="warning"] { color: var(--amber); }
+  dialog { width: min(980px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 1px solid var(--line); border-radius: 20px; padding: 0; color: var(--ink); background: var(--surface); box-shadow: 0 30px 90px #00000033; }
+  dialog::backdrop { background: #1429238c; backdrop-filter: blur(3px); }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+  .modal-body { padding: 18px 22px; overflow: auto; max-height: calc(100dvh - 225px); }
+  .output-text { height: 320px; font-family: Consolas, monospace; font-size: 12px; line-height: 1.65; white-space: pre; overflow: auto; resize: vertical; margin-top: 8px; }
+  .diff-details { border: 1px solid var(--line); border-radius: 10px; margin-top: 14px; overflow: hidden; }
+  .diff-controls { padding: 0 14px 10px; }
+  .diff-lines { margin: 0; padding: 10px 0; max-height: 300px; overflow: auto; background: var(--surface-muted); font-size: 11px; line-height: 1.65; }
+  .diff-line { display: block; padding: 0 14px; white-space: pre; }
+  .diff-line.add { background: var(--teal-soft); color: var(--teal-strong); }
+  .diff-line.remove { background: var(--danger-soft); color: var(--danger); }
+  .diff-line.gap { color: var(--muted); font-style: italic; }
+  .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  @media (min-width: 1600px) { .workspace { grid-template-columns: 250px minmax(0, 1fr) 320px; } }
+  @media (max-width: 1320px) { .workspace { grid-template-columns: 210px minmax(0, 1fr); } .right-rail { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 980px) { .app-shell { padding: 22px 18px 0; } .workspace { grid-template-columns: minmax(0, 1fr); } .left-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .right-rail { grid-column: auto; } .topbar { align-items: flex-start; } }
+  @media (max-width: 680px) {
+    .app-shell { padding: 18px 12px 0; }
+    .topbar { flex-direction: column; gap: 14px; margin-bottom: 18px; }
+    .topbar > .toolbar { width: 100%; justify-content: flex-end; }
+    .brand-mark { width: 42px; height: 42px; }
+    .input-panel { padding: 13px; }
+    .source-row { align-items: flex-start; }
+    .source-actions { width: 100%; }
+    .source-actions button { flex: 1 1 auto; }
+    .left-rail, .right-rail { grid-template-columns: minmax(0, 1fr); }
+    .frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "header" "left" "center" "right" "footer"; padding: 10px; gap: 10px; }
+    .page-body { min-height: 210px; }
+    .card-controls { grid-template-columns: 34px 34px minmax(0, 1fr); }
+    .card-name { font-size: 13px; }
+    .card-controls select, .card-group-select { font-size: 12px; min-height: 34px; }
+    .footer-bar { flex-direction: column; align-items: flex-start; gap: 5px; }
+    dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+    .modal-head, .modal-body, .modal-footer { padding: 13px; }
+    .modal-body { max-height: calc(100dvh - 210px); }
+    .output-text { height: 240px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { button, .card { transition: border-color .14s, background-color .14s, box-shadow .14s; } }
+</style>
+</head>
+<body>
+  <a class="skip-link" href="#layout-board">跳到布局画布</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div><div class="eyebrow">QUARTZ · LAYOUT STUDIO</div><h1>让每个组件，各就其位。</h1><p class="subtitle">Quartz v5 布局编辑器 · 本地离线 · 不改动你的项目文件</p></div>
+      </div>
+      <div class="toolbar"><span class="pill neutral">0.1 · 完全离线</span><button id="theme-toggle" type="button" data-action="theme" aria-label="切换明暗主题">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate">生成配置</button></div>
+    </header>
+    <section id="input-panel" class="input-panel" aria-label="配置来源"></section>
+    <main class="workspace">
+      <aside class="left-rail" aria-label="组件托盘与非布局插件"><section id="tray-panel" class="panel"></section><details id="plugins-panel" class="panel"></details></aside>
+      <section id="layout-board" tabindex="-1" aria-label="六槽位布局画布"></section>
+      <aside class="right-rail" aria-label="组件与页面属性"><section id="properties-panel" class="panel"></section><section id="groups-panel" class="panel"></section><section id="pages-panel" class="panel"></section></aside>
+    </main>
+    <footer class="footer-bar"><p id="status-text" class="status" role="status" aria-live="polite" aria-atomic="true">正在准备编辑器…</p><p>仅编辑布局与启用状态 · 输出 LF / UTF-8 文本</p></footer>
+  </div>
+  <div id="modal-host"></div>
+
+
+<script type="text/plain" id="default-config">
+# yaml-language-server: $schema=./quartz/plugins/quartz-plugins.schema.json
+configuration:
+  pageTitle: Quartz 5
+  pageTitleSuffix: ""
+  enableSPA: true
+  enablePopovers: true
+  analytics:
+    provider: plausible
+  locale: en-US
+  baseUrl: quartz.jzhao.xyz
+  ignorePatterns:
+    - private
+    - templates
+    - .obsidian
+  theme:
+    fontOrigin: googleFonts
+    cdnCaching: true
+    typography:
+      header: Schibsted Grotesk
+      body: Source Sans Pro
+      code: IBM Plex Mono
+    colors:
+      lightMode:
+        light: "#faf8f8"
+        lightgray: "#e5e5e5"
+        gray: "#b8b8b8"
+        darkgray: "#4e4e4e"
+        dark: "#2b2b2b"
+        secondary: "#284b63"
+        tertiary: "#84a59d"
+        highlight: rgba(143, 159, 169, 0.15)
+        textHighlight: "#fff23688"
+      darkMode:
+        light: "#161618"
+        lightgray: "#393639"
+        gray: "#646464"
+        darkgray: "#d4d4d4"
+        dark: "#ebebec"
+        secondary: "#7b97aa"
+        tertiary: "#84a59d"
+        highlight: rgba(143, 159, 169, 0.15)
+        textHighlight: "#b3aa0288"
+plugins:
+  - source: "@quartz-community/created-modified-date"
+    enabled: true
+    options:
+      defaultDateType: modified
+      priority:
+        - frontmatter
+        - git
+        - filesystem
+    order: 10
+  - source: "@quartz-community/syntax-highlighting"
+    enabled: true
+    options:
+      theme:
+        light: github-light
+        dark: github-dark
+      keepBackground: false
+    order: 20
+  - source: "@quartz-community/obsidian-flavored-markdown"
+    enabled: true
+    options:
+      enableInHtmlEmbed: false
+      enableCheckbox: true
+    order: 30
+  - source: "@quartz-community/github-flavored-markdown"
+    enabled: true
+    order: 40
+  - source: "@quartz-community/table-of-contents"
+    enabled: true
+    order: 50
+    layout:
+      position: right
+      priority: 30
+  - source: "@quartz-community/crawl-links"
+    enabled: true
+    options:
+      markdownLinkResolution: shortest
+    order: 60
+  - source: "@quartz-community/description"
+    enabled: true
+    order: 70
+  - source: "@quartz-community/latex"
+    enabled: true
+    options:
+      renderEngine: katex
+    order: 80
+  - source: "@quartz-community/citations"
+    enabled: false
+    order: 85
+  - source: "@quartz-community/hard-line-breaks"
+    enabled: false
+    order: 90
+  - source: "@quartz-community/ox-hugo"
+    enabled: false
+    order: 91
+  - source: "@quartz-community/roam"
+    enabled: false
+    order: 92
+  - source: "@quartz-community/quartz-fonts"
+    enabled: true
+  - source: "@quartz-themes/core"
+    enabled: false
+    options:
+      theme: tokyo-night
+      mode: both
+  - source: "@quartz-community/remove-draft"
+    enabled: true
+  - source: "@quartz-community/explicit-publish"
+    enabled: false
+  - source: "@quartz-community/alias-redirects"
+    enabled: true
+  - source: "@quartz-community/content-index"
+    enabled: true
+    options:
+      enableSiteMap: true
+      enableRSS: true
+  - source: "@quartz-community/favicon"
+    enabled: true
+  - source: "@quartz-community/og-image"
+    enabled: true
+  - source: "@quartz-community/cname"
+    enabled: true
+  - source: "@quartz-community/canvas-page"
+    enabled: true
+  - source: "@quartz-community/content-page"
+    enabled: true
+  - source: "@quartz-community/folder-page"
+    enabled: true
+  - source: "@quartz-community/tag-page"
+    enabled: true
+  - source: "@quartz-community/explorer"
+    enabled: true
+    layout:
+      position: left
+      priority: 50
+  - source: "@quartz-community/graph"
+    enabled: true
+    layout:
+      position: right
+      priority: 10
+  - source: "@quartz-community/search"
+    enabled: true
+    layout:
+      position: left
+      priority: 20
+      group: toolbar
+      groupOptions:
+        grow: true
+  - source: "@quartz-community/backlinks"
+    enabled: true
+    layout:
+      position: right
+      priority: 50
+  - source: "@quartz-community/article-title"
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 10
+  - source: "@quartz-community/content-meta"
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 20
+  - source: "@quartz-community/tag-list"
+    enabled: false
+    layout:
+      position: beforeBody
+      priority: 30
+  - source: "@quartz-community/page-title"
+    enabled: true
+    layout:
+      position: left
+      priority: 10
+  - source: "@quartz-community/darkmode"
+    enabled: true
+    layout:
+      position: left
+      priority: 30
+      group: toolbar
+  - source: "@quartz-community/reader-mode"
+    enabled: true
+    layout:
+      position: left
+      priority: 35
+      group: toolbar
+  - source: "@quartz-community/breadcrumbs"
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 5
+      condition: not-index
+  - source: "@quartz-community/comments"
+    enabled: false
+    options:
+      provider: giscus
+      options: {}
+    layout:
+      position: afterBody
+      priority: 10
+  - source: "@quartz-community/footer"
+    enabled: true
+    options:
+      links:
+        GitHub: https://github.com/jackyzha0/quartz
+        Discord Community: https://discord.gg/cRFFHYye7t
+    layout:
+      position: footer
+      priority: 50
+  - source: "@quartz-community/recent-notes"
+    enabled: false
+  - source: "@quartz-community/spacer"
+    enabled: true
+    options: {}
+    order: 25
+    layout:
+      position: left
+      priority: 25
+      display: mobile-only
+  - source: "@quartz-community/bases-page"
+    enabled: true
+    options: {}
+    order: 50
+  - source: "@quartz-community/note-properties"
+    enabled: true
+    options:
+      includeAll: false
+      includedProperties:
+        - description
+        - tags
+        - aliases
+      excludedProperties: []
+      hidePropertiesView: false
+      delimiters: ---
+      language: yaml
+    order: 5
+    layout:
+      position: beforeBody
+      priority: 15
+      display: all
+  - source: "@quartz-community/unlisted-pages"
+    enabled: true
+    options: {}
+    order: 45
+  - source: "@quartz-community/encrypted-pages"
+    enabled: true
+    options:
+      iterations: 600000
+      passwordField: password
+      unlistWhenEncrypted: false
+      outputPath: static/encryptedContentIndex.json
+    order: 900
+  - source: "@quartz-community/stacked-pages"
+    enabled: false
+    layout:
+      position: afterBody
+      priority: 50
+      display: all
+layout:
+  groups:
+    toolbar:
+      priority: 35
+      direction: row
+      gap: 0.5rem
+  byPageType:
+    "404":
+      positions:
+        beforeBody: []
+        left: []
+        right: []
+    content: {}
+    folder:
+      exclude:
+        - reader-mode
+      positions:
+        right: []
+    tag:
+      exclude:
+        - reader-mode
+      positions:
+        right: []
+    canvas: {}
+    bases: {}
+</script>
+<script id="core">
+const QuartzEditor = (() => {
+  const POSITIONS = ["header", "left", "beforeBody", "afterBody", "right", "footer"];
+  const PAGE_TYPES = ["404", "content", "folder", "tag", "canvas", "bases"];
+  const CATALOG = [
+    ["article-title", "Article Title", "beforeBody", 10],
+    ["backlinks", "Backlinks", "right", 30],
+    ["breadcrumbs", "Breadcrumbs", "beforeBody", 5],
+    ["comments", "Comments", "afterBody", 10],
+    ["content-meta", "Content Meta", "beforeBody", 20],
+    ["darkmode", "Dark Mode", "left", 30],
+    ["explorer", "Explorer", "left", 50],
+    ["footer", "Footer", "footer", 50],
+    ["graph", "Graph", "right", 10],
+    ["note-properties", "Note Properties", "beforeBody", 15, "transformer"],
+    ["page-title", "Page Title", "left", 10],
+    ["reader-mode", "Reader Mode", "left", 35],
+    ["recent-notes", "Recent Notes", "afterBody", 50],
+    ["search", "Search", "left", 20],
+    ["spacer", "Spacer", "left", 15],
+    ["stacked-pages", "Stacked Pages", "afterBody", 50],
+    ["table-of-contents", "Table of Contents", "right", 50, "transformer"],
+    ["tag-list", "Tag List", "beforeBody", 30],
+  ].map(([name, displayName, defaultPosition, defaultPriority, extra]) => ({
+    source: `@quartz-community/${name}`, displayName, defaultPosition, defaultPriority,
+    category: extra ? [extra, "component"] : ["component"],
+  }));
+  const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  const fail = (message, line) => { throw new Error(line === undefined ? message : `第 ${line + 1} 行：${message}`); };
+  const safeKey = (key, line) => {
+    if (["__proto__", "constructor", "prototype"].includes(key)) fail("不支持的键名", line);
+    return key;
+  };
+
+  function normalize(text) {
+    if (typeof text !== "string") fail("配置必须是文本");
+    const clean = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+    if (clean.includes("\r")) fail("不支持单独的 CR 换行，请使用 LF 或 CRLF");
+    const finalNewline = clean.endsWith("\n");
+    const lines = clean.split("\n");
+    if (finalNewline) lines.pop();
+    return { lines, finalNewline };
+  }
+
+  function stripComment(text, line) {
+    let quote = "";
+    for (let index = 0; index < text.length; index++) {
+      const character = text[index];
+      if (quote === '"' && character === "\\") { index++; continue; }
+      if (quote === "'" && character === "'" && text[index + 1] === "'") { index++; continue; }
+      if (quote) { if (character === quote) quote = ""; }
+      else if (character === '"' || character === "'") quote = character;
+      else if (character === "#" && (index === 0 || /\s/.test(text[index - 1]))) return text.slice(0, index).trimEnd();
+    }
+    if (quote) fail("不支持跨行引号或引号未闭合", line);
+    return text.trimEnd();
+  }
+
+  function scalar(text, line) {
+    const value = stripComment(text, line).trim();
+    if (!value) fail("缺少字段值", line);
+    if (value.startsWith('"')) {
+      try { const decoded = JSON.parse(value); if (typeof decoded !== "string") fail("需要字符串", line); return decoded; }
+      catch { fail("双引号字符串格式不支持", line); }
+    }
+    if (value.startsWith("'")) {
+      if (!/^'(?:[^']|'')*'$/.test(value)) fail("单引号字符串格式不支持", line);
+      return value.slice(1, -1).replace(/''/g, "'");
+    }
+    if (value === "true") return true;
+    if (value === "false") return false;
+    if (value === "null" || value === "~") return null;
+    if (value === "{}") return {};
+    if (value === "[]") return [];
+    if (value.startsWith("[")) {
+      if (!value.endsWith("]")) fail("列表未闭合", line);
+      const elements = [];
+      let start = 1;
+      let quote = "";
+      for (let index = 1; index < value.length; index++) {
+        const character = value[index];
+        if (quote === '"' && character === "\\") { index++; continue; }
+        if (quote === "'" && character === "'" && value[index + 1] === "'") { index++; continue; }
+        if (quote) { if (character === quote) quote = ""; }
+        else if (character === '"' || character === "'") quote = character;
+        else if (character === "," || index === value.length - 1) {
+          elements.push(scalar(value.slice(start, index), line)); start = index + 1;
+        }
+      }
+      return elements;
+    }
+    if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) fail("数值必须有限", line);
+      return number;
+    }
+    if (/^[&*!{>|\]}]/.test(value) || /:\s/.test(value)) fail("此处不支持锚点、标签、复杂 flow mapping 或多行标量", line);
+    return value;
+  }
+
+  function mappingLine(text, line) {
+    const clean = stripComment(text, line);
+    const match = clean.match(/^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[\w$.-]+):(?:\s+(.*)|\s*)$/);
+    if (!match) fail("无法识别的 YAML 键或缩进", line);
+    const key = match[1].startsWith('"') || match[1].startsWith("'") ? scalar(match[1], line) : match[1];
+    return { key: safeKey(String(key), line), value: match[2] === undefined ? "" : match[2] };
+  }
+
+  function splitTopLevel(lines) {
+    const sections = {};
+    let previous = null;
+    for (let line = 0; line < lines.length; line++) {
+      const text = lines[line];
+      if (/^\s*\t/.test(text)) fail("缩进不能包含 Tab", line);
+      if (!text.trim() || /^\s*#/.test(text)) continue;
+      if (/^\S/.test(text)) {
+        const field = mappingLine(text, line);
+        if (!["configuration", "plugins", "layout", "$schema"].includes(field.key)) fail(`不支持的顶层键 ${field.key}`, line);
+        if (sections[field.key]) fail(`重复顶层键 ${field.key}`, line);
+        if (previous) sections[previous][1] = line - 1;
+        sections[field.key] = [line, lines.length - 1];
+        previous = field.key;
+        if (field.key !== "$schema" && field.value) fail("顶层段须使用缩进块，不能是 flow mapping、锚点或别名", line);
+      }
+    }
+    if (!sections.configuration || !sections.plugins) fail("需要 configuration 和非空 plugins 段");
+    return sections;
+  }
+
+  function parseBlock(lines, span, indentation) {
+    const tokens = [];
+    for (let line = span[0]; line <= span[1]; line++) {
+      if (!lines[line].trim() || /^\s*#/.test(lines[line])) continue;
+      const indent = lines[line].match(/^ */)[0].length;
+      if (/^\s*\t/.test(lines[line])) fail("缩进不能包含 Tab", line);
+      tokens.push({ line, indent, text: lines[line].slice(indent) });
+    }
+    let cursor = 0;
+    function read(indent) {
+      if (!tokens[cursor] || tokens[cursor].indent !== indent) fail("不支持的缩进层级", tokens[cursor]?.line ?? span[0]);
+      const list = tokens[cursor].text.startsWith("- ");
+      const result = list ? [] : {};
+      while (cursor < tokens.length && tokens[cursor].indent >= indent) {
+        const token = tokens[cursor];
+        if (token.indent !== indent) fail("缩进应为两个空格一层", token.line);
+        cursor++;
+        if (list) {
+          if (!token.text.startsWith("- ")) fail("列表和映射不能混用", token.line);
+          result.push(scalar(token.text.slice(2), token.line));
+        } else {
+          if (token.text.startsWith("- ")) fail("映射和列表不能混用", token.line);
+          const field = mappingLine(token.text, token.line);
+          if (Object.hasOwn(result, field.key)) fail(`重复键 ${field.key}`, token.line);
+          if (field.value) result[field.key] = scalar(field.value, token.line);
+          else if (tokens[cursor]?.indent > indent) result[field.key] = read(indent + 2);
+          else fail(`缺少 ${field.key} 的值或子块`, token.line);
+        }
+      }
+      return result;
+    }
+    return tokens.length ? read(indentation) : {};
+  }
+
+  function parsePlugins(lines, span) {
+    const starts = [];
+    for (let line = span[0] + 1; line <= span[1]; line++) {
+      if (/^  - /.test(lines[line])) starts.push(line);
+      else if (lines[line].trim() && !/^\s*#/.test(lines[line]) && !/^ {4}/.test(lines[line])) fail("插件条目应使用两个空格加 '- source:'", line);
+    }
+    if (!starts.length) fail("plugins 段不能为空", span[0]);
+    return starts.map((start, id) => {
+      const end = id + 1 < starts.length ? starts[id + 1] - 1 : span[1];
+      const first = mappingLine(lines[start].slice(4), start);
+      if (first.key !== "source" || !first.value) fail("插件必须以字符串 source 开头", start);
+      const source = scalar(first.value, start);
+      if (typeof source !== "string" || !source.trim()) fail("只支持字符串 source，不支持对象 source", start);
+      const entry = { id, source, shortName: source.split("#")[0].split("/").pop(), span: [start, end],
+        enabledLine: null, enabled: true, layout: null, layoutSpan: null, catalog: null };
+      entry.catalog = CATALOG.find(component => component.source === source.split("#")[0]) ?? null;
+      const properties = [];
+      const keys = new Set(["source"]);
+      for (let line = start + 1; line <= end; line++) {
+        if (!lines[line].trim() || /^\s*#/.test(lines[line])) continue;
+        const indent = lines[line].match(/^ */)[0].length;
+        if (indent < 4) fail("不支持的插件属性缩进", line);
+        if (indent !== 4) {
+          if (!properties.length) fail("属性缺少父键", line);
+          continue;
+        }
+        const field = mappingLine(lines[line].slice(4), line);
+        if (!["source", "enabled", "order", "options", "layout"].includes(field.key)) fail(`不支持的插件属性 ${field.key}`, line);
+        if (keys.has(field.key)) fail(`重复插件属性 ${field.key}`, line);
+        keys.add(field.key); properties.push({ ...field, line });
+      }
+      properties.forEach((field, index) => {
+        const blockEnd = index + 1 < properties.length ? properties[index + 1].line - 1 : end;
+        let contentEnd = blockEnd;
+        while (contentEnd > field.line && (!lines[contentEnd].trim() || /^\s*#/.test(lines[contentEnd]))) contentEnd--;
+        if (field.key === "enabled") {
+          entry.enabled = scalar(field.value, field.line); entry.enabledLine = field.line;
+          if (typeof entry.enabled !== "boolean") fail("enabled 必须是 true 或 false", field.line);
+          if (contentEnd > field.line) fail("enabled 不能包含子块", field.line);
+        }
+        if (field.key === "order") {
+          if (typeof scalar(field.value, field.line) !== "number") fail("order 必须是数值", field.line);
+        }
+        if (field.key === "layout") {
+          entry.layoutSpan = [field.line, contentEnd];
+          entry.layout = field.value ? scalar(field.value, field.line) : parseBlock(lines, [field.line + 1, contentEnd], 6);
+          validateLayout(entry.layout, false, field.line);
+        }
+      });
+      entry.original = { enabled: entry.enabled, layout: clone(entry.layout) };
+      return entry;
+    });
+  }
+
+  function validateLayout(layout, strict = true, line) {
+    if (!layout || typeof layout !== "object" || Array.isArray(layout)) fail("layout 须为映射", line);
+    if (strict && (layout.position === undefined || layout.priority === undefined)) fail("显式布局必须包含 position 和 priority", line);
+    const allowed = ["position", "priority", "display", "condition", "group", "groupOptions"];
+    for (const key of Object.keys(layout)) if (!allowed.includes(key)) fail(`不支持的 layout 字段 ${key}`, line);
+    if (layout.position !== undefined && (typeof layout.position !== "string" || (strict && !POSITIONS.includes(layout.position)))) fail("position 不是六个合法槽位之一", line);
+    if (layout.priority !== undefined && (typeof layout.priority !== "number" || !Number.isFinite(layout.priority))) fail("priority 必须是有限数值", line);
+    if (layout.display !== undefined && !["all", "mobile-only", "desktop-only"].includes(layout.display)) fail("display 值无效", line);
+    for (const key of ["condition", "group"]) if (layout[key] !== undefined && typeof layout[key] !== "string") fail(`${key} 必须是字符串`, line);
+    if (layout.groupOptions !== undefined) {
+      const options = layout.groupOptions;
+      if (!options || typeof options !== "object" || Array.isArray(options)) fail("groupOptions 须为映射", line);
+      for (const key of Object.keys(options)) if (!["grow", "shrink", "basis", "order", "align", "justify"].includes(key)) fail(`不支持的 groupOptions.${key}`, line);
+      for (const key of ["grow", "shrink"]) if (options[key] !== undefined && typeof options[key] !== "boolean") fail(`${key} 必须为布尔值`, line);
+      if (options.basis !== undefined && typeof options.basis !== "string") fail("basis 必须为字符串", line);
+      if (options.order !== undefined && (typeof options.order !== "number" || !Number.isFinite(options.order))) fail("order 必须为有限数值", line);
+      if (options.align !== undefined && !["start", "end", "center", "stretch"].includes(options.align)) fail("align 值无效", line);
+      if (options.justify !== undefined && !["start", "end", "center", "between", "around"].includes(options.justify)) fail("justify 值无效", line);
+    }
+  }
+
+  function parseLayoutSection(lines, span) {
+    if (!span) return { groups: {}, byPageType: {} };
+    const section = parseBlock(lines, [span[0] + 1, span[1]], 2);
+    for (const key of Object.keys(section)) if (!["groups", "byPageType"].includes(key)) fail(`不支持的顶层 layout.${key}`, span[0]);
+    const groups = section.groups ?? {};
+    const byPageType = section.byPageType ?? {};
+    validateSection(groups, byPageType);
+    return { groups, byPageType };
+  }
+
+  function isMap(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
+  function validateSection(groups, byPageType) {
+    if (!isMap(groups) || !isMap(byPageType)) fail("groups 和 byPageType 必须为映射");
+    for (const [name, group] of Object.entries(groups)) {
+      safeKey(name);
+      if (!isMap(group)) fail("组配置必须为映射");
+      for (const key of Object.keys(group)) if (!["priority", "direction", "wrap", "gap"].includes(key)) fail(`不支持的组字段 ${key}`);
+      if (group.priority !== undefined && (typeof group.priority !== "number" || !Number.isFinite(group.priority))) fail("组 priority 必须为有限数值");
+      if (group.direction !== undefined && !["row", "row-reverse", "column", "column-reverse"].includes(group.direction)) fail("组 direction 值无效");
+      if (group.wrap !== undefined && !["nowrap", "wrap", "wrap-reverse"].includes(group.wrap)) fail("组 wrap 值无效");
+      if (group.gap !== undefined && typeof group.gap !== "string") fail("组 gap 必须为字符串");
+    }
+    for (const [type, page] of Object.entries(byPageType)) {
+      safeKey(type);
+      if (!isMap(page)) fail("页面类型配置必须为映射");
+      for (const key of Object.keys(page)) if (!["template", "exclude", "positions"].includes(key)) fail(`不支持的页面类型字段 ${key}`);
+      if (page.template !== undefined && typeof page.template !== "string") fail("template 必须为字符串");
+      if (page.exclude !== undefined && (!Array.isArray(page.exclude) || page.exclude.some(name => typeof name !== "string"))) fail("exclude 必须为短名字符串列表");
+      if (page.positions !== undefined) {
+        if (!isMap(page.positions)) fail("positions 必须为映射");
+        for (const [position, items] of Object.entries(page.positions)) {
+          if (!POSITIONS.includes(position) || !Array.isArray(items) || items.length) fail("byPageType.positions 只支持合法槽位的空数组，不能添加组件");
+        }
+      }
+    }
+  }
+
+  function load(text, source = { kind: "paste", name: "" }) {
+    const { lines, finalNewline } = normalize(text);
+    const sections = splitTopLevel(lines);
+    const entries = parsePlugins(lines, sections.plugins);
+    const { groups, byPageType } = parseLayoutSection(lines, sections.layout);
+    return { rawLines: lines, finalNewline, entries, groups, byPageType, sections,
+      originalGroups: clone(groups), originalByPageType: clone(byPageType), source: clone(source),
+      dirty: false, renumber: true, selected: null };
+  }
+
+  const originalText = state => state.rawLines.join("\n") + (state.finalNewline ? "\n" : "");
+  function effectiveLayout(entry) {
+    if (!entry.catalog && !entry.layout) return null;
+    if (entry.layout) return { position: entry.layout.position ?? entry.catalog?.defaultPosition,
+      priority: entry.layout.priority ?? 50, ...entry.layout };
+    return { position: entry.catalog.defaultPosition, priority: entry.catalog.defaultPriority ?? 50 };
+  }
+  function yamlValue(value) {
+    if (value === null) return "null";
+    if (typeof value === "boolean" || typeof value === "number") return String(value);
+    if (typeof value === "string") return JSON.stringify(value);
+    if (Array.isArray(value) && !value.length) return "[]";
+    if (isMap(value) && !Object.keys(value).length) return "{}";
+    fail("值不能直接写为 YAML 标量");
+  }
+  function yamlKey(key) { safeKey(key); return /^[a-zA-Z_][\w-]*$/.test(key) ? key : JSON.stringify(key); }
+  function emitMap(value, indentation) {
+    const prefix = " ".repeat(indentation);
+    const lines = [];
+    for (const [key, item] of Object.entries(value)) {
+      if (item === undefined) continue;
+      if (isMap(item) && Object.keys(item).length) {
+        lines.push(`${prefix}${yamlKey(key)}:`); lines.push(...emitMap(item, indentation + 2));
+      } else if (Array.isArray(item) && item.length) {
+        lines.push(`${prefix}${yamlKey(key)}:`);
+        for (const member of item) lines.push(`${prefix}  - ${yamlValue(member)}`);
+      } else lines.push(`${prefix}${yamlKey(key)}: ${yamlValue(item)}`);
+    }
+    return lines;
+  }
+  function emitLayoutBlock(entry) {
+    validateLayout(entry.layout);
+    return Object.keys(entry.layout).length ? ["    layout:", ...emitMap(entry.layout, 6)] : ["    layout: {}"];
+  }
+  function emitLayoutSection(state) {
+    validateSection(state.groups, state.byPageType);
+    const result = ["layout:"];
+    if (Object.keys(state.groups).length) result.push("  groups:", ...emitMap(state.groups, 4));
+    if (Object.keys(state.byPageType).length) result.push("  byPageType:", ...emitMap(state.byPageType, 4));
+    return result.length > 1 ? result : ["layout:", "  groups: {}", "  byPageType: {}"];
+  }
+  const equal = (first, second) => JSON.stringify(first) === JSON.stringify(second);
+
+  function generate(state) {
+    const patches = [];
+    for (const entry of state.entries) {
+      if (typeof entry.enabled !== "boolean") fail("enabled 必须是布尔值");
+      if (entry.enabled !== entry.original.enabled) {
+        if (entry.enabledLine !== null) {
+          const old = state.rawLines[entry.enabledLine];
+          const comment = old.match(/\s+#.*$/)?.[0] ?? "";
+          patches.push({ start: entry.enabledLine, end: entry.enabledLine, lines: [`    enabled: ${entry.enabled}${comment}`] });
+        } else patches.push({ start: entry.span[0] + 1, end: entry.span[0], lines: [`    enabled: ${entry.enabled}`] });
+      }
+      if (!equal(entry.layout, entry.original.layout)) {
+        const lines = entry.layout === null ? [] : emitLayoutBlock(entry);
+        if (entry.layoutSpan) patches.push({ start: entry.layoutSpan[0], end: entry.layoutSpan[1], lines });
+        else {
+          let insertion = entry.span[1] + 1;
+          while (insertion > entry.span[0] + 1 && (!state.rawLines[insertion - 1].trim() || /^\s*#/.test(state.rawLines[insertion - 1]))) insertion--;
+          patches.push({ start: insertion, end: insertion - 1, lines });
+        }
+      }
+    }
+    validateSection(state.groups, state.byPageType);
+    const sectionSpan = state.sections.layout;
+    if (sectionSpan) {
+      for (const [key, current, original] of [["groups", state.groups, state.originalGroups], ["byPageType", state.byPageType, state.originalByPageType]]) {
+        if (equal(current, original)) continue;
+        const starts = [];
+        for (let line = sectionSpan[0] + 1; line <= sectionSpan[1]; line++) {
+          if (/^  \S/.test(state.rawLines[line]) && !/^  #/.test(state.rawLines[line])) starts.push(line);
+        }
+        const start = starts.find(line => mappingLine(state.rawLines[line].slice(2), line).key === key);
+        const replacement = Object.keys(current).length ? [`  ${key}:`, ...emitMap(current, 4)] : [`  ${key}: {}`];
+        if (start !== undefined) {
+          const next = starts.find(line => line > start) ?? sectionSpan[1] + 1;
+          let end = next - 1;
+          while (end > start && (!state.rawLines[end].trim() || /^\s*#/.test(state.rawLines[end]))) end--;
+          patches.push({ start, end, lines: replacement });
+        } else patches.push({ start: sectionSpan[1] + 1, end: sectionSpan[1], lines: replacement });
+      }
+    } else if (!equal(state.groups, state.originalGroups) || !equal(state.byPageType, state.originalByPageType)) {
+      patches.push({ start: state.rawLines.length, end: state.rawLines.length - 1, lines: emitLayoutSection(state) });
+    }
+    const lines = state.rawLines.slice();
+    patches.forEach((patch, index) => { patch.sequence = index; });
+    patches.sort((first, second) => second.start - first.start || second.end - first.end || second.sequence - first.sequence);
+    for (const patch of patches) lines.splice(patch.start, patch.end - patch.start + 1, ...patch.lines);
+    return lines.join("\n") + (state.finalNewline ? "\n" : "");
+  }
+
+  function diffLines(before, after) {
+    const first = normalize(before).lines;
+    const second = normalize(after).lines;
+    if (first.length * second.length > 6000000) fail("配置过大，无法安全计算行级 diff");
+    const matrix = Array.from({ length: first.length + 1 }, () => new Uint32Array(second.length + 1));
+    for (let row = first.length - 1; row >= 0; row--) {
+      for (let column = second.length - 1; column >= 0; column--) matrix[row][column] = first[row] === second[column]
+        ? matrix[row + 1][column + 1] + 1 : Math.max(matrix[row + 1][column], matrix[row][column + 1]);
+    }
+    const diff = [];
+    let row = 0;
+    let column = 0;
+    while (row < first.length || column < second.length) {
+      if (row < first.length && column < second.length && first[row] === second[column]) {
+        diff.push({ type: "same", text: first[row] }); row++; column++;
+      } else if (row < first.length && (column === second.length || matrix[row + 1][column] >= matrix[row][column + 1])) {
+        diff.push({ type: "remove", text: first[row++] });
+      } else diff.push({ type: "add", text: second[column++] });
+    }
+    return diff;
+  }
+
+  function slotEntries(state, position) {
+    const explicit = state.entries.filter(entry => entry.enabled && entry.catalog && entry.layout && effectiveLayout(entry).position === position);
+    const implicit = state.entries.filter(entry => entry.enabled && entry.catalog && !entry.layout && effectiveLayout(entry).position === position);
+    const members = [...explicit, ...implicit].sort((first, second) => effectiveLayout(first).priority - effectiveLayout(second).priority);
+    const result = [];
+    const groups = new Map();
+    for (const entry of members) {
+      const layout = effectiveLayout(entry);
+      if (layout.group) {
+        if (!groups.has(layout.group)) {
+          const group = { kind: "group", name: layout.group, members: [], priority: state.groups[layout.group]?.priority ?? layout.priority };
+          groups.set(layout.group, group); result.push(group);
+        }
+        groups.get(layout.group).members.push(entry);
+      } else result.push({ kind: "entry", entry, priority: layout.priority });
+    }
+    return result.sort((first, second) => first.priority - second.priority);
+  }
+
+  function updateEntry(state, id, patch) {
+    const entry = state.entries.find(item => item.id === id);
+    if (!entry) fail("组件不存在");
+    if (patch.enabled !== undefined && typeof patch.enabled !== "boolean") fail("enabled 必须为布尔值");
+    if (patch.layout !== undefined && patch.layout !== null) validateLayout(patch.layout);
+    if (patch.enabled !== undefined) entry.enabled = patch.enabled;
+    if (patch.layout !== undefined) entry.layout = clone(patch.layout);
+    state.dirty = true;
+    return entry;
+  }
+  function updatePageType(state, type, patch) {
+    safeKey(type);
+    const page = { ...(state.byPageType[type] ?? {}), ...clone(patch) };
+    for (const key of Object.keys(page)) if (page[key] === undefined || page[key] === null) delete page[key];
+    validateSection(state.groups, { [type]: page });
+    state.byPageType[type] = page; state.dirty = true;
+  }
+  function setPriority(item, priority, state) {
+    if (item.kind === "group") state.groups[item.name] = { ...(state.groups[item.name] ?? {}), priority };
+    else {
+      if (effectiveLayout(item.entry).priority !== priority) item.entry.layout = { ...effectiveLayout(item.entry), priority };
+    }
+  }
+  function renumberItems(state, items) {
+    items.forEach((item, index) => {
+      setPriority(item, (index + 1) * 10, state);
+      if (item.kind === "group") item.members.forEach((entry, memberIndex) => {
+        if (effectiveLayout(entry).priority !== (memberIndex + 1) * 10) entry.layout = { ...effectiveLayout(entry), priority: (memberIndex + 1) * 10 };
+      });
+    });
+  }
+  function place(state, id, position, index, group) {
+    const entry = state.entries.find(item => item.id === id);
+    if (!entry?.catalog) fail("只有目录内的布局组件可以移动");
+    if (position === "tray") { updateEntry(state, id, { enabled: false }); return entry; }
+    if (!POSITIONS.includes(position)) fail("目标槽位无效");
+    if (group) safeKey(group);
+    const previous = effectiveLayout(entry);
+    const origin = entry.enabled && POSITIONS.includes(previous.position) ? previous.position : null;
+    const originItems = origin ? slotEntries(state, origin) : [];
+    entry.enabled = false;
+    const targetItems = slotEntries(state, position);
+    const layout = { ...previous, position };
+    if (group) layout.group = group;
+    else { delete layout.group; delete layout.groupOptions; }
+    let target;
+    if (group) {
+      target = targetItems.find(item => item.kind === "group" && item.name === group);
+      if (!target) {
+        target = { kind: "group", name: group, members: [], priority: state.groups[group]?.priority ?? layout.priority };
+        targetItems.push(target);
+      }
+      const insertion = Math.max(0, Math.min(index ?? target.members.length, target.members.length));
+      const priorities = target.members.map(item => effectiveLayout(item).priority);
+      layout.priority = insertionPriority(priorities, insertion);
+      target.members.splice(insertion, 0, entry);
+    } else {
+      const insertion = Math.max(0, Math.min(index ?? targetItems.length, targetItems.length));
+      layout.priority = insertionPriority(targetItems.map(item => item.priority), insertion);
+      targetItems.splice(insertion, 0, { kind: "entry", entry, priority: layout.priority });
+    }
+    entry.enabled = true; entry.layout = layout;
+    if (state.renumber) {
+      if (origin && origin !== position) renumberItems(state, slotEntries(state, origin));
+      renumberItems(state, targetItems);
+    } else if (target && !Object.hasOwn(state.groups[group] ?? {}, "priority")) {
+      state.groups[group] = { ...(state.groups[group] ?? {}), priority: target.priority };
+    }
+    if (originItems.length && origin === position && previous.group && previous.group !== group && state.renumber) {
+      renumberItems(state, targetItems);
+    }
+    state.dirty = true;
+    return entry;
+  }
+  function insertionPriority(priorities, index) {
+    if (!priorities.length) return 10;
+    if (!index) return priorities[0] - 10;
+    if (index === priorities.length) return priorities[index - 1] + 10;
+    return (priorities[index - 1] + priorities[index]) / 2;
+  }
+  function move(state, id, direction) {
+    const entry = state.entries.find(item => item.id === id);
+    if (!entry?.enabled || !entry.catalog || ![-1, 1].includes(direction)) fail("只能将启用组件上移或下移一位");
+    const layout = effectiveLayout(entry);
+    const items = slotEntries(state, layout.position);
+    const group = items.find(item => item.kind === "group" && item.members.some(member => member.id === id));
+    const peers = group ? group.members : items.map(item => item.kind === "entry" ? item.entry : item);
+    const index = peers.findIndex(item => item.id === id);
+    if (index < 0 || index + direction < 0 || index + direction >= peers.length) return entry;
+    return place(state, id, layout.position, index + direction, group?.name);
+  }
+  return { POSITIONS, PAGE_TYPES, CATALOG, normalize, splitTopLevel, parsePlugins, parseLayoutSection,
+    load, originalText, effectiveLayout, emitLayoutBlock, emitLayoutSection, generate, diffLines,
+    slotEntries, updateEntry, updatePageType, place, move };
+})();
+</script>
+<script id="quartz-editor-ui">
+(() => {
+  "use strict";
+  const slotLabels = { header: "页头", left: "左侧栏", beforeBody: "正文之前", afterBody: "正文之后", right: "右侧栏", footer: "页脚", tray: "托盘（禁用）" };
+  const pageLabels = { "404": "未找到", content: "文章", folder: "文件夹", tag: "标签", canvas: "画布", bases: "数据库" };
+  let core;
+  let state = {
+    entries: [], groups: {}, byPageType: {}, selected: null, dirty: false, renumber: true, source: null,
+    ui: { theme: "system", ready: false, inputMode: null, pasteText: "", file: null, pending: null, loading: false, pageType: "content", editGroup: "", newGroupName: "", drafts: {}, pluginsOpen: false, diffOpen: false, fullDiff: false, output: null, modalOpen: false, dragId: null, returnFocus: null, message: "正在准备编辑器…", tone: "neutral", error: "", warning: "" }
+  };
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+  const own = (object, key) => Object.prototype.hasOwnProperty.call(object || {}, key);
+  const put = (object, key, value) => Object.defineProperty(object, key, { value, writable: true, configurable: true, enumerable: true });
+  const entryName = entry => entry.catalog?.displayName || entry.shortName || sourceText(entry.source);
+  const sourceText = source => typeof source === "string" ? source : JSON.stringify(source ?? "");
+  const entryById = id => state.entries.find(entry => entry.id === Number(id));
+  const canPlace = entry => Boolean(entry.catalog?.defaultPosition);
+  const invalidPosition = entry => entry.enabled && canPlace(entry) && !core.POSITIONS.includes(core.effectiveLayout(entry).position);
+  const isDual = entry => ["table-of-contents", "note-properties"].includes(entry.shortName) || (entry.catalog?.category?.includes("transformer") && entry.catalog?.category?.includes("component"));
+  const groupNames = () => [...new Set([...Object.keys(state.groups), ...state.entries.map(entry => entry.layout?.group).filter(Boolean)])];
+  const draft = (id, fallback) => own(state.ui.drafts, id) ? state.ui.drafts[id] : fallback;
+  const selectedOption = (value, current) => String(value ?? "") === String(current ?? "") ? " selected" : "";
+  const options = (values, current) => values.map(value => { const record = typeof value === "string" ? [value, value] : value; return `<option value="${esc(record[0])}"${selectedOption(record[0], current)}>${esc(record[1])}</option>`; }).join("");
+  const slotOptions = current => options([...core.POSITIONS.map(position => [position, `${slotLabels[position]} · ${position}`]), ["tray", "托盘（禁用）"]], current);
+  function setMessage(message, tone = "neutral") { state.ui.message = String(message); state.ui.tone = tone; }
+  function reportError(error) { state.ui.error = error?.message || String(error); setMessage(state.ui.error, "error"); render(); }
+  function field(id, title, control, hint = "") { return `<label class="field" for="${esc(id)}"><span>${esc(title)}</span>${control}${hint ? `<small>${esc(hint)}</small>` : ""}</label>`; }
+  function selectField(id, title, values, current, attributes = "", hint = "") { return field(id, title, `<select id="${esc(id)}" ${attributes}>${options(values, current)}</select>`, hint); }
+  function textField(id, title, current, attributes = "", hint = "") { return field(id, title, `<input id="${esc(id)}" value="${esc(draft(id, current ?? ""))}" ${attributes}>`, hint); }
+  function focusSnapshot() {
+    const active = document.activeElement;
+    if (!active || active === document.body) return null;
+    const snapshot = { id: active.id, key: active.dataset.focus || null };
+    try { snapshot.start = active.selectionStart; snapshot.end = active.selectionEnd; } catch {}
+    return snapshot;
+  }
+  function restoreFocus(snapshot) {
+    if (!snapshot) return;
+    const target = snapshot.id ? document.getElementById(snapshot.id) : [...document.querySelectorAll("[data-focus]")].find(element => element.dataset.focus === snapshot.key);
+    if (!target || target.disabled) return;
+    target.focus({ preventScroll: true });
+    if (Number.isInteger(snapshot.start)) { try { target.setSelectionRange(snapshot.start, snapshot.end); } catch {} }
+  }
+  function sourceLabel() {
+    if (!state.source) return "尚未载入配置";
+    if (state.source.kind === "default") return "Quartz 默认配置（内置快照）";
+    if (state.source.kind === "paste") return "粘贴的配置";
+    return state.source.name || "本地配置文件";
+  }
+  function renderInput() {
+    const loadedAt = state.source?.loadedAt;
+    const timestamp = loadedAt ? new Date(loadedAt).toLocaleString("zh-CN", { hour12: false }) : "";
+    document.getElementById("input-panel").innerHTML = `<div class="source-row"><div class="source-meta"><span class="pill">配置来源</span><span class="source-name">${esc(sourceLabel())}</span>${timestamp ? `<span class="small">载入于 ${esc(timestamp)}</span>` : ""}<span class="pill ${state.dirty ? "warn" : "neutral"}">${state.dirty ? "有未生成的改动" : "已同步编辑状态"}</span></div><div class="source-actions"><button id="load-default" data-action="default" type="button"${state.ui.loading ? " disabled" : ""}>从默认配置开始</button><button id="choose-file" data-action="file" type="button"${state.ui.loading ? " disabled" : ""}>选择 YAML 文件</button><input class="sr-only" tabindex="-1" type="file" id="config-file" accept=".yaml,.yml,text/yaml,text/plain" aria-label="选择配置文件"><button id="open-paste" data-action="paste" type="button">粘贴配置</button></div></div>${state.ui.loading ? '<p class="notice">正在读取文件，请稍候…</p>' : ""}${state.ui.pending ? '<div id="dirty-confirmation" class="notice warning" role="group" aria-label="切换来源确认"><strong>当前有未生成的改动。</strong>载入另一份配置会丢弃这些改动，是否继续？<div class="toolbar"><button id="confirm-load" data-action="confirm-load" type="button">丢弃改动并载入</button><button id="cancel-load" data-action="cancel-load" type="button">保留当前编辑</button></div></div>' : ""}${state.ui.error ? `<p id="input-error" class="notice error">${esc(state.ui.error)}</p>` : ""}${state.ui.inputMode === "paste" ? `<div class="paste-area"><label for="paste-config"><strong>粘贴完整的 quartz.config.yaml</strong></label><p class="small">内容只在当前页面内存中处理，不上传、不自动保存。</p><textarea id="paste-config" spellcheck="false" placeholder="在这里粘贴配置内容…">${esc(state.ui.pasteText)}</textarea><div class="toolbar"><button id="load-paste" class="primary" data-action="load-paste" type="button">载入粘贴内容</button><button id="close-paste" data-action="close-paste" type="button">收起</button></div></div>` : ""}`;
+  }
+  function cardContext(entry) {
+    if (!entry.enabled || invalidPosition(entry)) return { position: "tray", group: "", index: -1, count: 0 };
+    const layout = core.effectiveLayout(entry);
+    const items = core.slotEntries(state, layout.position);
+    const group = items.find(item => item.kind === "group" && item.members.some(member => member.id === entry.id));
+    if (group) return { position: layout.position, group: group.name, index: group.members.findIndex(member => member.id === entry.id), count: group.members.length };
+    return { position: layout.position, group: "", index: items.findIndex(item => item.kind === "entry" && item.entry.id === entry.id), count: items.length };
+  }
+  function renderCard(entry) {
+    const name = entryName(entry);
+    const layout = core.effectiveLayout(entry);
+    const context = cardContext(entry);
+    const implicit = entry.enabled && !entry.layout;
+    const selected = state.selected === entry.id;
+    return `<article class="card${implicit ? " implicit" : ""}${!entry.enabled ? " disabled" : ""}${selected ? " selected" : ""}" draggable="true" tabindex="0" role="group" aria-label="${esc(name)} 组件" data-entry-id="${esc(entry.id)}" data-focus="card-${esc(entry.id)}"><div class="card-main"><span class="drag-grip" aria-hidden="true">⠿</span><div class="card-label"><button class="card-name" type="button" data-action="select" data-id="${esc(entry.id)}" data-focus="select-${esc(entry.id)}" aria-label="编辑 ${esc(name)}" aria-pressed="${selected}">${esc(name)}</button><div class="card-badges"><span class="pill neutral">优先级 ${esc(layout.priority)}</span>${implicit ? '<span class="pill">隐式布局</span>' : ""}${invalidPosition(entry) ? `<span class="pill warn">无效槽位 ${esc(layout.position)}：运行时会忽略</span>` : ""}${!entry.enabled ? '<span class="pill neutral">已禁用</span>' : ""}${selected ? '<span class="pill">正在编辑</span>' : ""}${isDual(entry) ? '<span class="pill neutral">组件 + 转换器</span>' : ""}</div></div></div><div class="card-controls"><button type="button" data-action="move" data-id="${esc(entry.id)}" data-direction="-1" data-focus="up-${esc(entry.id)}" aria-label="${esc(name)} 上移"${context.index <= 0 ? " disabled" : ""}>↑</button><button type="button" data-action="move" data-id="${esc(entry.id)}" data-direction="1" data-focus="down-${esc(entry.id)}" aria-label="${esc(name)} 下移"${context.index < 0 || context.index >= context.count - 1 ? " disabled" : ""}>↓</button><select data-control="card-position" data-id="${esc(entry.id)}" data-focus="position-${esc(entry.id)}" aria-label="移动 ${esc(name)} 到槽位">${slotOptions(entry.enabled ? layout.position : "tray")}</select></div><select class="card-group-select" data-control="card-group" data-id="${esc(entry.id)}" data-focus="group-${esc(entry.id)}" aria-label="移动 ${esc(name)} 到分组"${!entry.enabled ? " disabled" : ""}>${options([["", "不分组（移出组）"], ...groupNames().map(name => [name, `组 · ${name}`])], layout.group || "")}</select></article>`;
+  }
+  function insertZone(position, index, group = "") { return `<div class="drop-insert" aria-hidden="true" data-drop-position="${esc(position)}" data-drop-index="${esc(index)}"${group ? ` data-drop-group="${esc(group)}"` : ""}></div>`; }
+  function renderSlot(position) {
+    const items = core.slotEntries(state, position);
+    const count = items.reduce((total, item) => total + (item.kind === "entry" ? 1 : item.members.length), 0);
+    const content = items.map((item, index) => {
+      if (item.kind === "entry") return insertZone(position, index) + renderCard(item.entry);
+      const config = own(state.groups, item.name) ? state.groups[item.name] : {};
+      return `${insertZone(position, index)}<div class="group-container" role="group" aria-label="分组 ${esc(item.name)}"><div class="group-head"><span class="group-name">▦ ${esc(item.name)}</span><button data-action="edit-group" data-name="${esc(item.name)}" data-focus="edit-group-${esc(position)}-${esc(item.name)}" type="button" aria-label="编辑组 ${esc(item.name)}">编辑组</button></div><p class="group-meta">组优先级 ${esc(item.priority)} · ${esc(config.direction || "row")}</p><div class="group-members" data-drop-position="${esc(position)}" data-drop-group="${esc(item.name)}" data-drop-index="${esc(item.members.length)}">${item.members.map((entry, memberIndex) => insertZone(position, memberIndex, item.name) + renderCard(entry)).join("")}${insertZone(position, item.members.length, item.name)}</div></div>`;
+    }).join("");
+    return `<section id="slot-${esc(position)}" class="slot slot-${esc(position)}" role="group" aria-label="${esc(slotLabels[position])} ${esc(position)} 槽位"><div class="slot-title"><span>${esc(slotLabels[position])} <span class="pill neutral">${esc(count)}</span></span><span class="slot-code mono">${esc(position)}</span></div><div class="slot-body" data-drop-position="${esc(position)}" data-drop-index="${esc(items.length)}">${content}${insertZone(position, items.length)}${items.length ? "" : '<p class="empty-slot">拖入组件，或使用卡片的槽位菜单</p>'}</div></section>`;
+  }
+  function renderBoard() {
+    const activeCount = state.entries.filter(entry => entry.enabled && canPlace(entry)).length;
+    document.getElementById("layout-board").innerHTML = `<div class="board-heading"><div><p class="eyebrow">YOUR PAGE, REARRANGED</p><h2>页面布局 <span class="pill neutral">${esc(activeCount)} 个组件</span></h2><p class="board-info"><span>拖动卡片调整位置 · 也可使用 ↑ ↓ 和菜单</span><span><i class="legend-dash" aria-hidden="true"></i>虚线 = 使用插件默认布局</span></p></div><label class="check-line" for="renumber-priorities"><input id="renumber-priorities" type="checkbox"${state.renumber ? " checked" : ""}>自动重排优先级（步长 10）</label></div><div class="frame">${renderSlot("header")}${renderSlot("left")}<div class="frame-center">${renderSlot("beforeBody")}<section class="page-body" aria-label="正文 pageBody，不可放置组件"><p class="eyebrow">PAGE BODY · 固定正文</p><h3>留一点空间，给内容。</h3><p class="small">这里是文章本身。<br>把导航放在两侧，让信息自然流动。</p><div class="text-line" aria-hidden="true"></div><div class="text-line" aria-hidden="true"></div><div class="text-line short" aria-hidden="true"></div><span class="body-badge">不可放置组件 · 仅为布局示意</span></section>${renderSlot("afterBody")}</div>${renderSlot("right")}${renderSlot("footer")}</div>`;
+    const tray = state.entries.filter(entry => canPlace(entry) && (!entry.enabled || invalidPosition(entry)));
+    document.getElementById("tray-panel").innerHTML = `<div class="panel-head"><h2>组件托盘</h2><span class="pill neutral">${esc(tray.length)}</span></div><div class="panel-body"><p class="panel-intro">暂时不用的组件放在这里。移入槽位即可启用；移回托盘会禁用插件。</p><div id="component-tray" class="tray-zone" role="group" aria-label="已禁用组件托盘" data-drop-position="tray">${tray.map(entry => renderCard(entry)).join('<div class="drop-insert" aria-hidden="true"></div>') || '<p class="empty-slot">没有禁用的布局组件<br>可将卡片拖到这里</p>'}</div>${state.ui.warning ? `<p id="transformer-warning" class="notice warning">${esc(state.ui.warning)}</p>` : ""}</div>`;
+    const otherEntries = state.entries.filter(entry => !canPlace(entry));
+    const pluginsPanel = document.getElementById("plugins-panel");
+    pluginsPanel.open = state.ui.pluginsOpen;
+    pluginsPanel.innerHTML = `<summary>非布局插件 <span class="pill neutral">${esc(otherEntries.length)}</span></summary><div class="panel-body"><p class="panel-intro">不提供已知布局位置的插件保留原样，仅可切换启用状态。</p><div class="plugin-list">${otherEntries.map(entry => `<div class="plugin-row"><label for="plugin-enabled-${esc(entry.id)}"><input id="plugin-enabled-${esc(entry.id)}" type="checkbox" data-control="plugin-enabled" data-id="${esc(entry.id)}"${entry.enabled ? " checked" : ""} aria-label="启用 ${esc(entryName(entry))}"><span><span class="plugin-name">${esc(entryName(entry))}</span><span class="plugin-source">${esc(sourceText(entry.source))}</span></span></label></div>`).join("") || '<p class="small">没有非布局插件。</p>'}</div></div>`;
+  }
+  function renderProperties() {
+    const entry = state.selected === null ? null : entryById(state.selected);
+    const panel = document.getElementById("properties-panel");
+    if (!entry) { panel.innerHTML = '<div class="panel-head"><h2>组件属性</h2></div><div class="panel-body"><p class="small">选中一张卡片，调整显示条件、位置和分组。</p></div>'; return; }
+    const layout = core.effectiveLayout(entry);
+    const attributes = key => `data-property="${key}"`;
+    const unset = [["", "未设置"]];
+    const tri = [...unset, ["true", "true"], ["false", "false"]];
+    panel.innerHTML = `<div class="panel-head"><h2>${esc(entryName(entry))}</h2></div><div class="panel-body"><p class="small">${esc(entry.source)}</p><label class="check-line" for="property-enabled"><input id="property-enabled" type="checkbox" data-property="enabled"${entry.enabled ? " checked" : ""}>启用组件</label>${selectField("property-position", "位置", core.POSITIONS.map(position => [position, slotLabels[position]]), layout.position, attributes("position"))}${textField("property-priority", "优先级", layout.priority, `${attributes("priority")} type="number" step="any"`)}${selectField("property-display", "显示范围", [...unset, "all", "mobile-only", "desktop-only"], layout.display, attributes("display"))}${textField("property-condition", "显示条件", layout.condition, `${attributes("condition")} list="condition-presets"`, "自定义条件需在 Quartz 注册；未知条件会 warn 并无条件显示。")}<datalist id="condition-presets"><option value="not-index"><option value="has-tags"><option value="has-backlinks"><option value="has-toc"></datalist>${textField("property-group", "分组", layout.group, attributes("group"), "空值表示移出分组；新名称会创建默认组。")}<fieldset><legend>groupOptions · 组内布局</legend>${["grow", "shrink"].map(key => selectField(`property-${key}`, key, tri, layout.groupOptions?.[key] === undefined ? "" : String(layout.groupOptions[key]), attributes(`groupOptions.${key}`))).join("")}${textField("property-basis", "basis", layout.groupOptions?.basis, attributes("groupOptions.basis"))}${textField("property-order", "order", layout.groupOptions?.order, `${attributes("groupOptions.order")} type="number" step="any"`)}${selectField("property-align", "align", [...unset, "start", "end", "center", "stretch"], layout.groupOptions?.align, attributes("groupOptions.align"))}${selectField("property-justify", "justify", [...unset, "start", "end", "center", "between", "around"], layout.groupOptions?.justify, attributes("groupOptions.justify"))}</fieldset>${isDual(entry) ? '<p class="notice warning">禁用此插件也会关闭其转换器，不只是隐藏组件。</p>' : ""}</div>`;
+  }
+  function renderGroups() {
+    const names = groupNames();
+    const name = state.ui.editGroup;
+    const group = state.groups[name] || {};
+    document.getElementById("groups-panel").innerHTML = `<div class="panel-head"><h2>分组容器</h2></div><div class="panel-body">${selectField("edit-group", "选择分组", [["", "选择或创建分组"], ...names], name)}${textField("new-group-name", "新分组名称", state.ui.newGroupName)}<button type="button" data-action="add-group">创建分组</button>${name ? `${textField("group-priority", "组优先级", group.priority, 'data-group-property="priority" type="number" step="any"')}${selectField("group-direction", "方向", [["", "默认 row"], "row", "row-reverse", "column", "column-reverse"], group.direction, 'data-group-property="direction"')}${selectField("group-wrap", "换行", [["", "未设置"], "nowrap", "wrap", "wrap-reverse"], group.wrap, 'data-group-property="wrap"')}${textField("group-gap", "间距", group.gap, 'data-group-property="gap"')}` : '<p class="small">卡片的分组菜单与拖入组容器使用同一移动逻辑。</p>'}</div>`;
+  }
+  function renderPages() {
+    const type = state.ui.pageType;
+    const page = state.byPageType[type] || {};
+    document.getElementById("pages-panel").innerHTML = `<div class="panel-head"><h2>页面类型覆盖</h2></div><div class="panel-body"><p class="notice">此处不支持添加或重排组件，只能清空和排除。</p>${selectField("page-type", "页面类型", core.PAGE_TYPES.map(type => [type, `${pageLabels[type]} · ${type}`]), type)}${selectField("page-template", "模板", [["", "未设置"], "default", "full-width", "minimal"], page.template)}${textField("page-exclude", "排除组件短名", (page.exclude || []).join(", "), "", "使用逗号分隔，例如 reader-mode, graph。")}<fieldset><legend>清空槽位</legend>${core.POSITIONS.map(position => `<label class="check-line" for="clear-${esc(position)}"><input id="clear-${esc(position)}" type="checkbox" data-clear-position="${esc(position)}"${own(page.positions, position) ? " checked" : ""}>清空 ${esc(position)}</label>`).join("")}</fieldset>${page.template === "minimal" ? '<p id="minimal-warning" class="notice warning">minimal 模板只保留正文与页脚，header、left、right、afterBody 四个槽位不会显示。</p>' : ""}</div>`;
+  }
+  function renderModal() {
+    const host = document.getElementById("modal-host");
+    if (!state.ui.modalOpen) { host.innerHTML = ""; return; }
+    const output = state.ui.output;
+    const changed = output.diff.filter(line => line.type !== "same");
+    host.innerHTML = `<dialog id="output-dialog" aria-labelledby="output-title"><div class="modal-head"><h2 id="output-title">生成的 quartz.config.yaml</h2><button type="button" data-action="close-output" aria-label="关闭输出">关闭</button></div><div class="modal-body"><p class="small">仅供你手动复制粘贴；不会写入站点。${esc(changed.length)} 行变动。</p><label for="output-yaml">完整配置</label><textarea id="output-yaml" class="output-text" readonly spellcheck="false">${esc(output.text)}</textarea><details class="diff-details" id="output-diff"${state.ui.diffOpen ? " open" : ""}><summary>行级 diff（${esc(changed.length)} 行）</summary><pre class="diff-lines">${changed.length ? output.diff.map(line => `<span class="diff-line ${esc(line.type)}">${line.type === "add" ? "+" : line.type === "remove" ? "−" : " "} ${esc(line.text)}</span>`).join("") : '<span class="diff-line">没有改动</span>'}</pre></details></div><div class="modal-footer"><span class="small" id="copy-status">${esc(state.ui.copyMessage || "LF 换行 · 无 BOM · 保留末尾换行状态")}</span><button class="primary" type="button" data-action="copy">复制完整配置</button></div></dialog>`;
+    document.getElementById("output-dialog").showModal();
+  }
+  function render() {
+    const focus = focusSnapshot();
+    renderInput();
+    if (core && state.ui.ready) { renderBoard(); renderProperties(); renderGroups(); renderPages(); }
+    renderModal();
+    const status = document.getElementById("status-text");
+    status.textContent = state.ui.message;
+    status.dataset.tone = state.ui.tone;
+    document.getElementById("generate-config").disabled = !state.ui.ready;
+    restoreFocus(focus);
+  }
+  function loadConfig(text, source) {
+    try {
+      const loaded = core.load(text, { ...source, loadedAt: new Date().toISOString() });
+      const ui = { ...state.ui, ready: true, inputMode: null, pending: null, loading: false, drafts: {}, warning: "", error: "", modalOpen: false };
+      state = { ...loaded, ui };
+      setMessage(`已载入 ${state.entries.length} 个插件，配置仅在内存中处理。`);
+      render();
+    } catch (error) { state.ui.loading = false; reportError(error); }
+  }
+  function requestLoad(text, source) {
+    if (state.dirty) { state.ui.pending = { text, source }; setMessage("切换配置前，请确认是否丢弃改动。"); render(); }
+    else loadConfig(text, source);
+  }
+  function defaultText() { return document.getElementById("default-config").textContent.replace(/^\n/, ""); }
+  function announceMove(entry) {
+    const context = cardContext(entry);
+    if (!entry.enabled && isDual(entry)) state.ui.warning = `${entryName(entry)} 已禁用：转换器也被关闭，会影响目录或笔记属性处理。`;
+    setMessage(`${entryName(entry)} 已移至 ${slotLabels[context.position] || context.position}${context.index >= 0 ? ` 第 ${context.index + 1} 位` : ""}。`);
+  }
+  function moveEntry(id, position, index, group) {
+    core.place(state, Number(id), position, index, group || undefined);
+    announceMove(entryById(id)); render();
+  }
+  function mutateProperty(key, value) {
+    const entry = entryById(state.selected);
+    if (key === "enabled") {
+      core.updateEntry(state, entry.id, { enabled: value });
+      if (!value && isDual(entry)) state.ui.warning = `${entryName(entry)} 已禁用，转换器也会连带关闭。`;
+    } else if (key === "position") { moveEntry(entry.id, value); return; }
+    else if (key === "group") { moveEntry(entry.id, core.effectiveLayout(entry).position, undefined, value); return; }
+    else {
+      const layout = { ...core.effectiveLayout(entry) };
+      if (key.startsWith("groupOptions.")) {
+        const field = key.split(".")[1];
+        const options = { ...(layout.groupOptions || {}) };
+        if (value === "") delete options[field];
+        else options[field] = ["grow", "shrink"].includes(field) ? value === "true" : field === "order" ? Number(value) : value;
+        if (Object.keys(options).length) layout.groupOptions = options; else delete layout.groupOptions;
+      } else if (value === "") delete layout[key];
+      else layout[key] = key === "priority" ? Number(value) : value;
+      core.updateEntry(state, entry.id, { layout });
+    }
+    state.ui.drafts = {}; setMessage(`${entryName(entry)} 属性已更新。`); render();
+  }
+  async function copyOutput() {
+    const text = state.ui.output.text;
+    let copied = false;
+    try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); copied = true; } } catch {}
+    if (!copied) {
+      const output = document.getElementById("output-yaml");
+      output.focus(); output.select();
+      try { copied = document.execCommand("copy"); } catch {}
+    }
+    state.ui.copyMessage = copied ? "已复制，可粘贴到你的配置文件。" : "自动复制不可用：配置已全选，请按 Ctrl+C。";
+    document.getElementById("copy-status").textContent = state.ui.copyMessage;
+    setMessage(state.ui.copyMessage);
+    document.getElementById("status-text").textContent = state.ui.message;
+  }
+  function applyTheme(theme) {
+    state.ui.theme = theme;
+    if (theme === "system") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("quartz-editor-theme", theme); } catch {}
+  }
+  document.addEventListener("click", event => {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+    try {
+      if (action === "theme") {
+        const dark = state.ui.theme === "dark" || (state.ui.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        applyTheme(dark ? "light" : "dark"); return;
+      }
+      if (action === "select") { state.selected = Number(button.dataset.id); state.ui.drafts = {}; render(); }
+      else if (action === "move") {
+        const entry = core.move(state, Number(button.dataset.id), Number(button.dataset.direction));
+        announceMove(entry); render();
+      }
+      else if (action === "edit-group") { state.ui.editGroup = button.dataset.name; render(); document.getElementById("edit-group").focus(); }
+      else if (action === "add-group") {
+        const name = state.ui.newGroupName.trim();
+        if (!name || ["__proto__", "constructor", "prototype"].includes(name)) throw new Error("请输入有效的分组名称。");
+        if (!own(state.groups, name)) put(state.groups, name, {});
+        state.ui.editGroup = name; state.ui.newGroupName = ""; state.ui.drafts = {}; state.dirty = true; render();
+      }
+      else if (action === "default") requestLoad(defaultText(), { kind: "default", name: "Quartz 默认配置（内置快照）" });
+      else if (action === "file") document.getElementById("config-file").click();
+      else if (action === "paste") { state.ui.inputMode = "paste"; render(); document.getElementById("paste-config").focus(); }
+      else if (action === "close-paste") { state.ui.inputMode = null; render(); }
+      else if (action === "load-paste") requestLoad(state.ui.pasteText, { kind: "paste", name: "粘贴" });
+      else if (action === "confirm-load") { const pending = state.ui.pending; loadConfig(pending.text, pending.source); }
+      else if (action === "cancel-load") { state.ui.pending = null; render(); }
+      else if (action === "generate") {
+        const text = core.generate(state);
+        state.ui.output = { text, diff: core.diffLines(core.originalText(state), text) };
+        state.dirty = false; state.ui.modalOpen = true; state.ui.copyMessage = ""; setMessage("已生成配置；请先核对 diff 再手动粘贴。"); render();
+      }
+      else if (action === "close-output") { state.ui.modalOpen = false; render(); document.getElementById("generate-config").focus(); }
+      else if (action === "copy") void copyOutput();
+    } catch (error) { reportError(error); }
+  });
+  document.addEventListener("input", event => {
+    const input = event.target;
+    if (input.id === "paste-config") state.ui.pasteText = input.value;
+    else if (input.id === "new-group-name") state.ui.newGroupName = input.value;
+    else if (input.id && input.tagName === "INPUT") state.ui.drafts[input.id] = input.value;
+  });
+  document.addEventListener("change", async event => {
+    const input = event.target;
+    try {
+      if (input.id === "config-file") {
+        const file = input.files[0];
+        if (!file) return;
+        state.ui.loading = true;
+        const text = await file.text(); state.ui.loading = false;
+        requestLoad(text, { kind: "file", name: file.name });
+      } else if (input.id === "renumber-priorities") state.renumber = input.checked;
+      else if (input.dataset.control === "card-position") moveEntry(input.dataset.id, input.value);
+      else if (input.dataset.control === "card-group") moveEntry(input.dataset.id, core.effectiveLayout(entryById(input.dataset.id)).position, undefined, input.value);
+      else if (input.dataset.control === "plugin-enabled") {
+        core.updateEntry(state, Number(input.dataset.id), { enabled: input.checked }); setMessage("插件启用状态已更新。"); render();
+      }
+      else if (input.dataset.property) mutateProperty(input.dataset.property, input.type === "checkbox" ? input.checked : input.value);
+      else if (input.id === "edit-group") { state.ui.editGroup = input.value; state.ui.drafts = {}; render(); }
+      else if (input.dataset.groupProperty) {
+        const key = input.dataset.groupProperty;
+        const group = { ...(state.groups[state.ui.editGroup] || {}) };
+        if (input.value === "") delete group[key];
+        else group[key] = key === "priority" ? Number(input.value) : input.value;
+        const old = state.groups[state.ui.editGroup];
+        state.groups[state.ui.editGroup] = group;
+        try { core.generate(state); } catch (error) { state.groups[state.ui.editGroup] = old; throw error; }
+        state.dirty = true; state.ui.drafts = {}; render();
+      } else if (input.id === "page-type") { state.ui.pageType = input.value; state.ui.drafts = {}; render(); }
+      else if (input.id === "page-template") { core.updatePageType(state, state.ui.pageType, { template: input.value || null }); render(); }
+      else if (input.id === "page-exclude") {
+        core.updatePageType(state, state.ui.pageType, { exclude: input.value.split(",").map(name => name.trim()).filter(Boolean) }); state.ui.drafts = {}; render();
+      } else if (input.dataset.clearPosition) {
+        const positions = { ...(state.byPageType[state.ui.pageType]?.positions || {}) };
+        if (input.checked) positions[input.dataset.clearPosition] = []; else delete positions[input.dataset.clearPosition];
+        core.updatePageType(state, state.ui.pageType, { positions }); render();
+      }
+    } catch (error) { reportError(error); }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && state.ui.modalOpen) { event.preventDefault(); state.ui.modalOpen = false; render(); document.getElementById("generate-config").focus(); return; }
+    const card = event.target.closest("[data-entry-id]");
+    if (card && event.target === card && ["Enter", " "].includes(event.key)) {
+      event.preventDefault(); state.selected = Number(card.dataset.entryId); render();
+    }
+  });
+  document.addEventListener("dragstart", event => {
+    const card = event.target.closest("[data-entry-id]");
+    if (!card) return;
+    state.ui.dragId = Number(card.dataset.entryId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(state.ui.dragId));
+  });
+  function dropTarget(event) {
+    const zone = event.target.closest("[data-drop-position]");
+    if (!zone) return null;
+    const position = zone.dataset.dropPosition;
+    const group = zone.dataset.dropGroup || "";
+    let index = Number(zone.dataset.dropIndex || 0);
+    const card = event.target.closest("[data-entry-id]");
+    if (card && zone.contains(card)) {
+      const context = cardContext(entryById(card.dataset.entryId));
+      index = context.index + (event.clientY > card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2 ? 1 : 0);
+    }
+    const dragged = entryById(state.ui.dragId);
+    if (dragged) {
+      const origin = cardContext(dragged);
+      if (origin.position === position && origin.group === group && origin.index >= 0 && origin.index < index) index--;
+    }
+    return { zone, position, group, index };
+  }
+  document.addEventListener("dragover", event => {
+    if (state.ui.dragId === null) return;
+    const target = dropTarget(event);
+    if (target) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; document.querySelectorAll(".is-drop-target").forEach(element => element.classList.remove("is-drop-target")); target.zone.classList.add("is-drop-target"); }
+  });
+  document.addEventListener("drop", event => {
+    if (state.ui.dragId === null) return;
+    const target = dropTarget(event);
+    if (!target) return;
+    event.preventDefault();
+    try { moveEntry(state.ui.dragId, target.position, target.index, target.group); } catch (error) { reportError(error); }
+    state.ui.dragId = null;
+  });
+  document.addEventListener("dragend", () => { state.ui.dragId = null; document.querySelectorAll(".is-drop-target").forEach(element => element.classList.remove("is-drop-target")); });
+  document.addEventListener("toggle", event => {
+    if (event.target.id === "plugins-panel") state.ui.pluginsOpen = event.target.open;
+    else if (event.target.id === "output-diff") state.ui.diffOpen = event.target.open;
+  }, true);
+  core = QuartzEditor;
+  let theme = "system";
+  try { const stored = localStorage.getItem("quartz-editor-theme"); if (["system", "light", "dark"].includes(stored)) theme = stored; } catch {}
+  applyTheme(theme);
+  loadConfig(defaultText(), { kind: "default", name: "Quartz 默认配置（内置快照）" });
+})();
+</script>
+</body>
+</html>

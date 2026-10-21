@@ -8,10 +8,10 @@
 
 ## 阶段 0：测试夹具
 
-- [ ] 0.1 `fixtures/default-config.yaml` ← Quartz v5 官方 `quartz.config.default.yaml`（GitHub raw，`v5` 分支）
-- [ ] 0.2 `fixtures/local/real-config.yaml` ← 复制 `H:\learn\github\buzhidao10068\Quartz\quartz.config.yaml`。只读复制，源文件不动
-- [ ] 0.3 `.gitignore` 加一行 `fixtures/local/`
-- [ ] 0.4 `fixtures/README.md`：两份样本的来源，以及 local 为什么不进仓库
+- [x] 0.1 `fixtures/default-config.yaml` ← Quartz v5 官方 `quartz.config.default.yaml`（GitHub raw，`v5` 分支）
+- [x] 0.2 `fixtures/local/real-config.yaml` ← 复制 `H:\learn\github\buzhidao10068\Quartz\quartz.config.yaml`。只读复制，源文件不动
+- [x] 0.3 `.gitignore` 加一行 `fixtures/local/`
+- [x] 0.4 `fixtures/README.md`：两份样本的来源，以及 local 为什么不进仓库
 
 验证：
 - `real-config.yaml` 为 312 行、46 个 `^  - source:` 条目
@@ -20,15 +20,15 @@
 
 ## 阶段 1：core 骨架与解析器
 
-- [ ] 1.1 建 `index.html` 骨架，五段按 spec 的 Structure 排列
-- [ ] 1.2 `tests/load-core.mjs`：读 `index.html`，取出 `<script id="core">` 的源码，在 `vm` 里执行并导出其中的函数
-- [ ] 1.3 `normalize(text)` → `{ lines, finalNewline }`
-- [ ] 1.4 `splitTopLevel(lines)` → 三个顶层段的行区间
-- [ ] 1.5 `parsePlugins(lines, span)` → entry 数组，含 span / enabledLine / layoutSpan
-- [ ] 1.6 `parseLayoutSection(lines, span)` → groups + byPageType
-- [ ] 1.7 解析失败：遇到不认识的缩进或语法，抛出带行号的错误
+- [x] 1.1 建 `index.html` 骨架，五段按 spec 的 Structure 排列
+- [x] 1.2 `tests/load-core.mjs`：读 `index.html`，取出 `<script id="core">` 的源码，在 `vm` 里执行并导出其中的函数
+- [x] 1.3 `normalize(text)` → `{ lines, finalNewline }`
+- [x] 1.4 `splitTopLevel(lines)` → 三个顶层段的行区间
+- [x] 1.5 `parsePlugins(lines, span)` → entry 数组，含 span / enabledLine / layoutSpan
+- [x] 1.6 `parseLayoutSection(lines, span)` → groups + byPageType
+- [x] 1.7 解析失败：遇到不认识的缩进或语法，抛出带行号的错误
 
-验证（`node --test tests/`）：
+验证（`node --test tests/core.test.mjs`）：
 - `real-config.yaml` 解析出 46 个 entry
 - `explorer` 的 layout 为 `{ position: "left", priority: 50 }`
 - `tag-list` 的 `enabled` 为 `false`
@@ -40,11 +40,11 @@
 
 ## 阶段 2：回写与 diff
 
-- [ ] 2.1 `emitLayoutBlock(entry)` → `layout:` 块的行数组，缩进 4 / 6 / 8
-- [ ] 2.2 `emitLayoutSection(state)` → 整个顶层 `layout:` 段
-- [ ] 2.3 `generate(state)` → 补丁从后往前应用，返回输出文本
-- [ ] 2.4 `diffLines(a, b)` → LCS，返回带类型的行列表
-- [ ] 2.5 `tests/yaml_paths_diff.py`：用 PyYAML 读入两份 YAML，以 JSON 列表输出变化的路径
+- [x] 2.1 `emitLayoutBlock(entry)` → `layout:` 块的行数组，缩进 4 / 6 / 8
+- [x] 2.2 `emitLayoutSection(state)` → 整个顶层 `layout:` 段
+- [x] 2.3 `generate(state)` → 补丁从后往前应用，返回输出文本
+- [x] 2.4 `diffLines(a, b)` → LCS，返回带类型的行列表
+- [x] 2.5 `tests/yaml_paths_diff.py`：用 PyYAML 读入两份 YAML，以 JSON 列表输出变化的路径
 
 验证：
 - **空操作幂等（AC2，硬门槛）**：两份夹具 × 四种变体（LF / CRLF / 带 BOM / 无末尾换行），不改任何东西直接生成，diff 为空；LF 且不带 BOM 的输入，输出逐字节相同。这条不过就不往下走
@@ -55,11 +55,11 @@
 
 ## 阶段 3：组件目录与渲染
 
-- [ ] 3.1 在 core 里内嵌 18 个组件的目录常量（source / 显示名 / defaultPosition / defaultPriority / category）
-- [ ] 3.2 `slotEntries(state, pos)` 放在 core 里：复刻 `resolveGroups` 的排序，包括隐式放置
-- [ ] 3.3 槽位网格布局 + 卡片渲染
-- [ ] 3.4 托盘渲染已禁用的组件；隐式放置的组件画在它的默认槽位里，带虚线和「隐式」标签
-- [ ] 3.5 非布局插件区：目录里没有的 source 放这里
+- [x] 3.1 在 core 里内嵌 18 个组件的目录常量（source / 显示名 / defaultPosition / defaultPriority / category）
+- [x] 3.2 `slotEntries(state, pos)` 放在 core 里：复刻 `resolveGroups` 的排序，包括隐式放置
+- [x] 3.3 槽位网格布局 + 卡片渲染
+- [x] 3.4 托盘渲染已禁用的组件；隐式放置的组件画在它的默认槽位里，带虚线和「隐式」标签
+- [x] 3.5 非布局插件区：目录里没有的 source 放这里
 
 验证（单测，AC1）。下面的期望值是按运行时 `resolveGroups` 的算法从 `real-config.yaml` 推出来的，不是凭印象写的：
 
@@ -81,12 +81,12 @@
 
 ## 阶段 4：交互
 
-- [ ] 4.1 底层函数 `move(id, dir)` / `place(id, pos, index)` 放在 core 里
-- [ ] 4.2 HTML5 拖拽调用 `place`
-- [ ] 4.3 卡片上的上移/下移按钮调用 `move`
-- [ ] 4.4 priority 重排逻辑（开、关两种模式）
-- [ ] 4.5 拖入组盒子 → 写上 `group`；拖出 → 清掉
-- [ ] 4.6 aria-live 播报
+- [x] 4.1 底层函数 `move(id, dir)` / `place(id, pos, index)` 放在 core 里
+- [x] 4.2 HTML5 拖拽调用 `place`
+- [x] 4.3 卡片上的上移/下移按钮调用 `move`
+- [x] 4.4 priority 重排逻辑（开、关两种模式）
+- [x] 4.5 拖入组盒子 → 写上 `group`；拖出 → 清掉
+- [x] 4.6 aria-live 播报
 
 验证：
 - 单测：重排开启时，组内改顺序不会让组盒子在槽位里挪位置
@@ -95,11 +95,11 @@
 
 ## 阶段 5：属性面板与 byPageType
 
-- [ ] 5.1 属性面板：enabled / position / priority / display / condition / group / groupOptions
-- [ ] 5.2 `groupOptions` 的布尔项做成三态
-- [ ] 5.3 禁用双重身份插件时给出警告（AC6）
-- [ ] 5.4 byPageType 面板：template 下拉 + exclude 输入 + 六个清空复选框
-- [ ] 5.5 面板上写明「不支持添加组件」；选 `minimal` 时警告会丢掉四个槽位（C6）
+- [x] 5.1 属性面板：enabled / position / priority / display / condition / group / groupOptions
+- [x] 5.2 `groupOptions` 的布尔项做成三态
+- [x] 5.3 禁用双重身份插件时给出警告（AC6）
+- [x] 5.4 byPageType 面板：template 下拉 + exclude 输入 + 六个清空复选框
+- [x] 5.5 面板上写明「不支持添加组件」；选 `minimal` 时警告会丢掉四个槽位（C6）
 
 验证：
 - 单测：勾「清空 right」后，输出的 `positions:` 下有 `right: []`（AC7）
@@ -107,23 +107,23 @@
 
 ## 阶段 6：输入输出与收尾
 
-- [ ] 6.1 三种来源：内置默认 / 粘贴 / 文件选择，汇入同一个 `load()`
-- [ ] 6.2 有未生成的改动时切换来源，先在界面内确认
-- [ ] 6.3 输出弹窗：整份 yaml + diff 折叠区 + 复制（剪贴板 API 不可用时回退到 `execCommand`）
-- [ ] 6.4 明暗主题切换
-- [ ] 6.5 手机宽度不出现横向滚动
-- [ ] 6.6 README：使用说明、只适用 v5、C3 导致的 VS Code 误报说明
+- [x] 6.1 三种来源：内置默认 / 粘贴 / 文件选择，汇入同一个 `load()`
+- [x] 6.2 有未生成的改动时切换来源，先在界面内确认
+- [x] 6.3 输出弹窗：整份 yaml + diff 折叠区 + 复制（剪贴板 API 不可用时回退到 `execCommand`）
+- [x] 6.4 明暗主题切换
+- [x] 6.5 手机宽度不出现横向滚动
+- [x] 6.6 README：使用说明、只适用 v5、C3 导致的 VS Code 误报说明
 
 验证：
 - 单测：同一份配置，粘贴载入和文件选择载入的解析结果完全一致（AC12）
 - Playwright：不粘贴、不选文件，打开就显示默认配置的布局，并且能生成（AC11）
 - Playwright：断网打开，全部功能可用（AC9）。如果 Playwright 不让打开 `file://`，就改用本地静态服务器跑自动化检查，再手动用 `file://` 打开确认一次
-- `node --test tests/` 全部通过，跳过的测试照实报告
+- `node --test tests/core.test.mjs` 全部通过，跳过的测试照实报告
 
 ## 验证命令
 
 ```bash
-node --test tests/          # core 单测 + AC10 独立解析器校验
+node --test tests/core.test.mjs          # core 单测 + AC10 独立解析器校验
 ```
 
 界面部分用 Playwright 检查，记录在每个阶段的验证项里。
@@ -138,3 +138,7 @@ node --test tests/          # core 单测 + AC10 独立解析器校验
 - 阶段 2 结束：幂等性和定向改动两条测试都通过，再进阶段 3
 - 阶段 4 结束：键盘路径必须真的跑一遍，不能只看代码就认为能用
 - 阶段 6 结束：所有单测通过、Playwright 检查通过，才算完成
+
+## 实施结果（2026-10-21）
+
+阶段 0–6 已实现。最终核心测试 30/30 通过、零跳过；离线 file:// 浏览器验收通过。完整证据与限制见 `validation.md`。AC3 的单插件最小 diff 仅在关闭自动重排时满足；默认自动重排会修改受影响组件与组的优先级，因此该 PRD 条目保持待用户确认。任务未提交、未推送、未归档，等待用户视觉验收。
