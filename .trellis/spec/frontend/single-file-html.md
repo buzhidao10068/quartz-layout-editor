@@ -6,7 +6,7 @@ This project ships one artifact: `index.html`. No build step, no package manager
 
 ## Hard constraints
 
-- **Zero external requests.** No CDN scripts, no Google Fonts, no remote images. The tool must work offline from `file://`. A single `<link>` to a CDN breaks the primary use case.
+- **Zero external requests.** No CDN scripts, Google Fonts, remote images, iframe, or running-site preview. The editor, translations and guide must work offline from `file://` and as a static deployment. The earlier preview exception was revoked by the user.
 - **No build tooling.** Author `index.html` directly. Do not introduce bundlers, transpilers, or `node_modules`. If a feature seems to require them, reconsider the feature.
 - **No framework.** Vanilla DOM APIs only. The generic `hook-guidelines.md` and `state-management.md` in this directory describe React-shaped projects and do not apply.
 
@@ -56,6 +56,26 @@ Rendering must be a pure function of `state`. Never read UI values back out of t
 - Wrap every read and write in `try/catch`. Private windows, blocked site data, and some `file://` configurations throw on access.
 - The page must render correctly when storage comes back empty.
 - Use it only for per-viewer conveniences (theme choice, a collapsed panel). Never for data the user would lose work by losing.
+
+## Internationalization
+
+- Use embedded paired Chinese/English strings and matching interpolation parameters. Translate descriptions, enums, accessible labels, guide, messages, errors and output controls, not just buttons.
+- Never translate canonical plugin sources, short names, manifest names or generated YAML keys/values. Chinese component labels retain their English reference.
+- Store messages as keys plus parameters, and errors with reason/line metadata, so changing locale updates existing feedback without parsing translated DOM text.
+- Keep locale in UI state; set document lang/title and safely persist only the preference. Default to Chinese for zh browser locales, English otherwise. Blocked storage must not break rendering.
+- Language changes must preserve configuration, edits, selected component, field drafts, paste contents, source confirmation and output. Keep a language selector inside the modal for keyboard users.
+- Do not replace a pending click target during text-field blur. Defer rendering until pointer interaction completes; clear deferred pointer state when dragging ends.
+- Verify zero HTTP requests and no iframe in both locales. Normalize checked-out fixture baselines to LF before explicit newline variants because Windows Git may checkout CRLF.
+
+## Quartz 5 draft effects
+
+- Offline draft effects are allowed; a running-site iframe is not. Render representative safe sample content and explicitly disclose that themes, content, options and plugin services are not executed.
+- Match inspected frame source: header and beforeBody are inside the center column, afterBody follows the body, footer occupies the center column below it. Mobile orders left, center, right, footer. Full-width omits sidebars; minimal omits five slots, including beforeBody.
+- Resolve page exclusions before grouping. Resolve group priority before filtering display/conditions. Apply page slot clears and frame omissions without mutating state. Use the shared pure slot ordering rather than a separate preview sorter.
+- Simulate the Quartz 800px mobile / 1200px desktop breakpoints explicitly, independently of the editor viewport. Keep optional fit scaling separate from layout resolution and provide original-size viewing.
+- Custom conditions and frames must show assumptions instead of pretending to execute site code. Every rendered known component must identify its entry/source/slot for one-to-one checks.
+- Apply validated flex values through CSS properties, never interpolate config strings into HTML style declarations. Do not introduce remote assets, iframe, user HTML rendering or config uploads.
+- Browser checks must measure edit and effect geometry and exercise live changes, templates, viewports, conditions, mapping navigation, scaling and zero network. Keep generated YAML unchanged when merely viewing.
 
 ---
 

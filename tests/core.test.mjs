@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import vm from 'node:vm';
 import { loadCore, plain, root } from './load-core.mjs';
 
 const core = loadCore();
-const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', import.meta.url), 'utf8');
+const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const localPath = new URL('../fixtures/local/real-config.yaml', import.meta.url);
 const entryNamed = (state, name) => state.entries.find(entry => entry.shortName === name);
 const independent = (before, after) => {
@@ -264,4 +265,130 @@ test('edits cannot remove required explicit layout position or priority', () => 
   const entry = entryNamed(state, 'graph');
   assert.throws(() => core.updateEntry(state, entry.id, { layout: { position: 'right' } }));
   assert.throws(() => core.updateEntry(state, entry.id, { layout: { priority: 10 } }));
+});
+
+test('all catalog components have Chinese names and descriptions without changing canonical identifiers', () => {
+  assert.equal(core.CATALOG.length, 18);
+  for (const component of core.CATALOG) {
+    assert.match(component.chineseName, /[\u4e00-\u9fff]/);
+    assert.match(component.description, /[\u4e00-\u9fff]/);
+    assert.match(component.source, /^@quartz-community\//);
+    assert.equal(typeof component.displayName, 'string');
+  }
+  const website = core.CATALOG.find(component => component.source.endsWith('/page-title'));
+  const article = core.CATALOG.find(component => component.source.endsWith('/article-title'));
+  assert.equal(website.chineseName, '网站标题');
+  assert.equal(website.displayName, 'Page Title');
+  assert.equal(article.chineseName, '文章标题');
+  assert.match(website.description, /不是当前文章标题/);
+  assert.equal(core.generate(core.load(defaultRaw)), defaultRaw);
+});
+
+function translationCore() {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const ui = html.match(/<script id="quartz-editor-ui">([\s\S]*?)<\/script>/)[1];
+  const context = vm.createContext({ QuartzEditor: core });
+  const prefix = ui.slice(0, ui.indexOf('  document.addEventListener("pointerdown"'));
+  vm.runInContext(`${prefix}\ncore = QuartzEditor; globalThis.translations = { COPY, ENGLISH_DESCRIPTIONS, errorText, translate, setLanguage(value) { state.ui.locale = value; } };\n})();`, context);
+  return { html, translations: context.translations };
+}
+
+test('every embedded UI key and component explanation has Chinese and English coverage', () => {
+  const { translations } = translationCore();
+  for (const [key, pair] of Object.entries(translations.COPY)) {
+    assert.equal(pair.length, 2, key);
+    assert.ok(pair.every(value => typeof value === 'string' && value.length > 0), key);
+    const placeholders = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
+    assert.deepEqual(placeholders(pair[0]), placeholders(pair[1]), key);
+  }
+  for (const component of core.CATALOG) {
+    const shortName = component.source.split('/').pop();
+    assert.ok(translations.ENGLISH_DESCRIPTIONS[shortName], shortName);
+    assert.doesNotMatch(translations.ENGLISH_DESCRIPTIONS[shortName], /[\u4e00-\u9fff]/);
+  }
+});
+
+test('all parser validation templates translate into English and retain source line metadata', () => {
+  const { html, translations } = translationCore();
+  translations.setLanguage('en');
+  const coreSource = html.match(/<script id="core">([\s\S]*?)<\/script>/)[1];
+  const templates = [...coreSource.matchAll(/fail\(("[^"]*"|`[^`]*`)/g)].map(match => match[1].slice(1, -1));
+  assert.ok(templates.length > 60);
+  for (const template of templates) {
+    const reason = template.replace(/\$\{[^}]+\}/g, 'test-field');
+    const output = translations.errorText({ reason, line: 2 });
+    assert.match(output, /^Line 3:/);
+    assert.doesNotMatch(output, /[\u4e00-\u9fff]/, reason);
+  }
+  let error;
+  try { core.load(defaultRaw.replace('enabled: true', 'enabled: yes')); } catch (failure) { error = failure; }
+  assert.equal(typeof error.line, 'number');
+  assert.equal(error.reason, 'enabled 必须是 true 或 false');
+  assert.match(translations.errorText(error), /^Line \d+: enabled must be true or false$/);
+  translations.setLanguage('zh-CN');
+  assert.match(translations.errorText(error), /^第 \d+ 行：enabled 必须是 true 或 false$/);
+});
+
+test('draft resolver applies display rules at the Quartz 800/1200 breakpoints without changing YAML', () => {
+  const state = core.load(defaultRaw);
+  const before = core.generate(state);
+  const spacer = entryNamed(state, 'spacer');
+  const toc = entryNamed(state, 'table-of-contents');
+  const ids = model => Object.values(model.slots).flatMap(items => items.flatMap(item => item.kind === 'entry' ? [item.entry.id] : item.members.map(entry => entry.id)));
+  assert.equal(core.resolveDraftLayout(state, { width: 800 }).viewport, 'mobile');
+  assert.equal(core.resolveDraftLayout(state, { width: 801 }).viewport, 'tablet');
+  assert.equal(core.resolveDraftLayout(state, { width: 1200 }).viewport, 'desktop');
+  assert.ok(ids(core.resolveDraftLayout(state, { width: 390 })).includes(spacer.id));
+  assert.ok(!ids(core.resolveDraftLayout(state, { width: 1440 })).includes(spacer.id));
+  assert.ok(!ids(core.resolveDraftLayout(state, { width: 1000 })).includes(toc.id));
+  assert.ok(ids(core.resolveDraftLayout(state, { width: 1440 })).includes(toc.id));
+  assert.equal(core.generate(state), before);
+});
+
+test('draft exclusions happen before grouping and hidden members do not change effective group priority', () => {
+  const state = core.load(defaultRaw);
+  delete state.groups.toolbar.priority;
+  const search = entryNamed(state, 'search');
+  search.layout.display = 'mobile-only';
+  let model = core.resolveDraftLayout(state, { width: 1440 });
+  let group = model.slots.left.find(item => item.kind === 'group');
+  assert.equal(group.priority, 20);
+  assert.ok(!group.members.some(entry => entry.id === search.id));
+  state.byPageType.content = { exclude: ['search'], positions: { right: [] } };
+  model = core.resolveDraftLayout(state, { width: 1440 });
+  group = model.slots.left.find(item => item.kind === 'group');
+  assert.equal(group.priority, 30);
+  assert.equal(model.slots.right.length, 0);
+  assert.ok(model.hidden.some(item => item.id === search.id && item.reason === 'excluded'));
+});
+
+test('draft templates correspond to actual frame source, including all five absent minimal slots', () => {
+  const state = core.load(defaultRaw);
+  state.byPageType.content = { template: 'minimal' };
+  let model = core.resolveDraftLayout(state);
+  assert.deepEqual(plain(model.frameSlots), ['footer']);
+  for (const position of ['header', 'left', 'beforeBody', 'afterBody', 'right']) assert.equal(model.slots[position].length, 0);
+  state.byPageType.content.template = 'full-width';
+  model = core.resolveDraftLayout(state);
+  assert.deepEqual(plain(model.frameSlots), ['header', 'beforeBody', 'afterBody', 'footer']);
+  assert.equal(model.slots.left.length, 0);
+  assert.equal(model.slots.right.length, 0);
+  state.byPageType.content.template = 'custom-frame';
+  model = core.resolveDraftLayout(state);
+  assert.equal(model.template, 'default');
+  assert.equal(model.unsupportedTemplate, true);
+});
+
+test('draft built-in conditions and unknown custom predicates use explicit sample context', () => {
+  const state = core.load(defaultRaw);
+  const breadcrumb = entryNamed(state, 'breadcrumbs');
+  assert.ok(core.resolveDraftLayout(state, { isIndex: true }).hidden.some(item => item.id === breadcrumb.id && item.reason === 'condition'));
+  const graph = entryNamed(state, 'graph');
+  for (const [condition, key] of [['has-tags', 'hasTags'], ['has-backlinks', 'hasBacklinks'], ['has-toc', 'hasToc']]) {
+    graph.layout.condition = condition;
+    assert.ok(core.resolveDraftLayout(state, { [key]: false }).hidden.some(item => item.id === graph.id && item.reason === 'condition'));
+    assert.ok(!core.resolveDraftLayout(state, { [key]: true }).hidden.some(item => item.id === graph.id));
+  }
+  graph.layout.condition = '<custom>';
+  assert.deepEqual(plain(core.resolveDraftLayout(state).unknownConditions), ['<custom>']);
 });

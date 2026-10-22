@@ -1,0 +1,32 @@
+{
+  "id": "chinese-guide-preview",
+  "name": "chinese-guide-preview",
+  "title": "Chinese / English i18n and onboarding",
+  "description": "Complete bilingual UI and beginner guide; remove the running-site preview and preserve fully offline static deployment.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "buzhidao10068",
+  "assignee": "buzhidao10068",
+  "createdAt": "2026-10-21",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "index.html",
+    "README.md",
+    "tests/core.test.mjs",
+    "tests/browser-check.mjs",
+    ".trellis/spec/frontend/single-file-html.md"
+  ],
+  "notes": "Implementation ready for review: complete Chinese/English i18n, locale preference, state-preserving switching and guide. Running-site preview removed per latest user request. 33 core tests and bilingual offline browser checks passed. No site operations, commit, push, release or Cloudflare deployment performed. Publication update (2026-10-22): user authorized commit and push to main, tag 0.2, and a GitHub Release with offline index.html. Source-site restrictions remain unchanged.",
+  "meta": {}
+}

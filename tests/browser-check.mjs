@@ -10,14 +10,14 @@ const playwright = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await playwright.chromium.launch({
   executablePath: process.env.BROWSER_EXECUTABLE || undefined, headless: true,
 });
-const context = await browser.newContext({ offline: true, viewport: { width: 1440, height: 1000 } });
+const context = await browser.newContext({ offline: true, locale: 'zh-CN', viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 page.setDefaultTimeout(6000);
 const errors = [];
 const network = [];
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
-const raw = readFileSync(new URL('../fixtures/default-config.yaml', import.meta.url), 'utf8');
+const raw = readFileSync(new URL('../fixtures/default-config.yaml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const fileUrl = new URL('../index.html', import.meta.url).href;
 const screenshotDirectory = process.env.SCREENSHOT_DIR || join(root, 'scratch', 'screenshots');
 mkdirSync(screenshotDirectory, { recursive: true });
@@ -44,10 +44,22 @@ const independent = (before, after) => {
 
 try {
   await page.goto(fileUrl);
+  assert.equal(await page.locator('#project-link').getAttribute('href'), 'https://github.com/buzhidao10068/quartz-layout-editor');
+  assert.equal(await page.locator('#project-link').getAttribute('rel'), 'noopener noreferrer');
+  assert.match(await page.locator('#project-link').textContent(), /项目地址/);
   assert.match(await status(), /已载入 45 个插件/);
   assert.equal(await page.locator('.slot').count(), 6);
+  assert.equal(await page.locator('#beginner-guide').getAttribute('open'), '');
+  assert.match(await page.locator('#guide-panel').textContent(), /网站标题（Page Title）/);
+  assert.equal(await page.getByRole('button', { name: '编辑 网站标题', exact: true }).count(), 1);
+  await page.getByRole('button', { name: '编辑 网站标题', exact: true }).click();
+  assert.match(await page.locator('#properties-panel').textContent(), /不是当前文章标题/);
+  assert.match(await page.locator('#properties-panel').textContent(), /Page Title/);
+  assert.equal(await page.locator('iframe').count(), 0);
+  await page.locator('#beginner-guide > summary').click();
   assert.equal(await generate(), raw);
   await closeOutput();
+  assert.equal(await page.locator('#beginner-guide').getAttribute('open'), null);
   console.log('PASS default snapshot, offline file://, no-op output');
 
   await page.locator('#renumber-priorities').uncheck();
@@ -56,27 +68,27 @@ try {
   for (let count = 0; count < 200; count++) {
     await page.keyboard.press('Tab');
     const label = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
-    if (label === '移动 Graph 到槽位') { found = true; break; }
+    if (label === '移动 关系图谱 到槽位') { found = true; break; }
   }
-  assert.equal(found, true, 'Keyboard Tab can reach Graph position selector');
+  assert.equal(found, true, 'Keyboard Tab can reach 关系图谱 position selector');
   await page.keyboard.press('Home');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(100);
-  assert.match(await status(), /Graph 已移至 左侧栏/);
-  assert.equal(await page.locator('#slot-left').getByRole('group', { name: 'Graph 组件', exact: true }).count(), 1);
+  assert.match(await status(), /关系图谱 已移至 左侧栏/);
+  assert.equal(await page.locator('#slot-left').getByRole('group', { name: '关系图谱 组件', exact: true }).count(), 1);
   const keyboardOutput = await generate();
   assert.ok(independent(raw, keyboardOutput).every(path => path.includes('.layout.')));
   await closeOutput();
   console.log('PASS actual Tab + keyboard cross-slot move and aria-live');
 
   await page.locator('#load-default').click();
-  await page.getByRole('button', { name: '编辑 Table of Contents', exact: true }).click();
+  await page.getByRole('button', { name: '编辑 文章目录', exact: true }).click();
   await page.locator('#property-enabled').uncheck();
   assert.match(await page.locator('#transformer-warning').textContent(), /转换器/);
   await page.locator('#clear-right').check();
   await page.locator('#page-template').selectOption('minimal');
-  assert.match(await page.locator('#minimal-warning').textContent(), /四个槽位/);
+  assert.match(await page.locator('#minimal-warning').textContent(), /五个槽位/);
   const overridden = await generate();
   assert.ok(independent(raw, overridden).includes('layout.byPageType.content.positions'));
   await closeOutput();
@@ -92,26 +104,26 @@ try {
   await closeOutput();
   console.log('PASS file and paste equivalence');
 
-  await selectCard('Graph').selectOption('left');
+  await selectCard('关系图谱').selectOption('left');
   await page.locator('#load-default').click();
   assert.equal(await page.locator('#dirty-confirmation').count(), 1);
   await page.locator('#cancel-load').click();
-  assert.equal(await page.locator('#slot-left').getByRole('group', { name: 'Graph 组件', exact: true }).count(), 1);
+  assert.equal(await page.locator('#slot-left').getByRole('group', { name: '关系图谱 组件', exact: true }).count(), 1);
   await page.locator('#load-default').click();
   await page.locator('#confirm-load').click();
   console.log('PASS in-page dirty confirmation preserves edits when cancelled');
 
   const implicit = raw.replace(/    layout:\n      position: right\n      priority: 50\n(?=  - source: "@quartz-community\/article-title")/, '');
   await loadPaste(implicit);
-  assert.equal(await page.getByRole('group', { name: 'Backlinks 组件', exact: true }).locator('.card-badges').getByText('隐式布局').count(), 1);
+  assert.equal(await page.getByRole('group', { name: '反向链接 组件', exact: true }).locator('.card-badges').getByText('隐式布局').count(), 1);
   await page.locator('#load-default').click();
-  const graph = page.getByRole('group', { name: 'Graph 组件', exact: true });
+  const graph = page.getByRole('group', { name: '关系图谱 组件', exact: true });
   await graph.dragTo(page.locator('#slot-header .slot-body'), { sourcePosition: { x: 20, y: 25 } });
-  assert.equal(await page.locator('#slot-header').getByRole('group', { name: 'Graph 组件', exact: true }).count(), 1);
+  assert.equal(await page.locator('#slot-header').getByRole('group', { name: '关系图谱 组件', exact: true }).count(), 1);
   console.log('PASS implicit defaults and real drag/drop');
 
   await loadPaste(raw.replace('condition: not-index', 'condition: "<img src=x onerror=globalThis.injected=true>"'));
-  await page.getByRole('button', { name: '编辑 Breadcrumbs', exact: true }).click();
+  await page.getByRole('button', { name: '编辑 面包屑导航', exact: true }).click();
   assert.equal(await page.locator('#properties-panel img').count(), 0);
   assert.equal(await page.evaluate(() => globalThis.injected), undefined);
   const injectionOutput = await generate();
@@ -125,7 +137,7 @@ try {
 
   await loadPaste(raw.replace('position: right', 'position: body'));
   assert.match(await page.locator('#component-tray').textContent(), /无效槽位 body/);
-  await selectCard('Table of Contents').selectOption('right');
+  await selectCard('文章目录').selectOption('right');
   independent(raw, await generate());
   await closeOutput();
   await page.locator('#load-default').click();
@@ -145,4 +157,248 @@ try {
   assert.deepEqual(network, []);
   assertNoErrors();
   console.log('PASS zero HTTP requests and zero browser errors');
+
+
+  await page.locator('#language-select').selectOption('en');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+  assert.match(await page.title(), /Quartz Layout Editor 0.2/);
+  assert.equal(await page.locator('#generate-config').textContent(), 'Generate config');
+  assert.match(await page.locator('#project-link').textContent(), /Project repository/);
+  assert.match(await page.locator('#guide-panel').textContent(), /Page Title is the name/);
+  assert.equal(await page.locator('#site-preview-panel').count(), 0);
+  assert.equal(await page.locator('iframe, #site-preview-panel').count(), 0);
+  await page.getByRole('button', { name: 'Edit Page Title', exact: true }).click();
+  assert.match(await page.locator('#properties-panel').textContent(), /Not the current article/);
+  assert.equal(await page.locator('#property-display option[value="mobile-only"]').textContent(), 'Mobile only');
+  const chineseBodyText = await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const values = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement.closest('script, option[value="zh-CN"]')) continue;
+      if (/[\u4e00-\u9fff]/.test(node.textContent)) values.push(node.textContent);
+    }
+    return values;
+  });
+  assert.deepEqual(chineseBodyText, []);
+  assert.equal(await generate(), raw);
+  await page.locator('#output-language').selectOption('zh-CN');
+  assert.equal(await page.locator('#output-yaml').inputValue(), raw);
+  assert.match(await page.locator('#output-title').textContent(), /生成的/);
+  await page.locator('#output-language').selectOption('en');
+  assert.equal(await page.locator('#output-yaml').inputValue(), raw);
+  assert.equal(await page.locator('#output-title').textContent(), 'Generated quartz.config.yaml');
+  assert.equal(await page.locator('#output-language').evaluate(element => element === document.activeElement), true);
+  await page.locator('[data-action="close-output"]').click();
+  console.log('PASS complete English UI, canonical enum values, bilingual output dialog without losing YAML');
+
+  await page.getByRole('button', { name: 'Edit Graph', exact: true }).click();
+  await page.locator('#property-condition').fill('custom-unsaved');
+  await page.locator('#open-paste').click();
+  await page.locator('#paste-config').fill('# unfinished paste\nconfiguration:');
+  await page.locator('#language-select').focus();
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.equal(await page.locator('#property-condition').inputValue(), 'custom-unsaved');
+  assert.equal(await page.locator('#paste-config').inputValue(), '# unfinished paste\nconfiguration:');
+  assert.equal(await page.locator('#language-select').evaluate(element => element === document.activeElement), true);
+  await page.locator('#language-select').selectOption('en');
+  await page.locator('#property-condition').fill('');
+  await page.locator('#close-paste').click();
+  await page.locator('#renumber-priorities').uncheck();
+  await page.getByRole('combobox', { name: 'Move Graph to slot', exact: true }).selectOption('left');
+  assert.match(await status(), /Graph moved to Left sidebar/);
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.match(await status(), /关系图谱 已移至 左侧栏/);
+  assert.equal(await page.locator('#slot-left').getByRole('group', { name: '关系图谱 组件', exact: true }).count(), 1);
+  await page.locator('#load-default').click();
+  await page.locator('#language-select').selectOption('en');
+  assert.match(await page.locator('#dirty-confirmation').textContent(), /ungenerated changes/);
+  await page.locator('#cancel-load').click();
+  assert.equal(await page.locator('#slot-left').getByRole('group', { name: 'Graph component', exact: true }).count(), 1);
+  const englishEdited = await generate();
+  await page.locator('#output-language').selectOption('zh-CN');
+  assert.equal(await page.locator('#output-yaml').inputValue(), englishEdited);
+  await page.locator('#output-language').selectOption('en');
+  assert.equal(await page.locator('#output-yaml').inputValue(), englishEdited);
+  await page.locator('[data-action="close-output"]').click();
+  console.log('PASS locale changes preserve field/paste drafts, selected component, dirty edits, confirmation and generated output');
+
+  await page.locator('#load-default').click();
+  await page.getByRole('button', { name: 'Edit Table of Contents', exact: true }).click();
+  await page.locator('#property-enabled').uncheck();
+  assert.match(await page.locator('#transformer-warning').textContent(), /transformer is also disabled/);
+  await page.locator('#clear-right').check();
+  await page.locator('#page-template').selectOption('minimal');
+  assert.match(await page.locator('#minimal-warning').textContent(), /header, beforeBody, left, right and afterBody/);
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.match(await page.locator('#transformer-warning').textContent(), /文章目录/);
+  await page.locator('#language-select').selectOption('en');
+  await generate();
+  await page.locator('[data-action="copy"]').click();
+  await page.waitForFunction(() => /Copied|Ctrl\+C/.test(document.getElementById('copy-status').textContent));
+  await page.locator('#output-language').selectOption('zh-CN');
+  assert.match(await page.locator('#copy-status').textContent(), /已复制|Ctrl\+C/);
+  await page.locator('#output-language').selectOption('en');
+  assert.match(await page.locator('#copy-status').textContent(), /Copied|Ctrl\+C/);
+  await page.locator('[data-action="close-output"]').click();
+  console.log('PASS bilingual transformer/template warnings and persistent translated clipboard feedback');
+
+  await page.locator('#open-paste').click();
+  await page.locator('#paste-config').fill(raw.replace('enabled: true', 'enabled: yes'));
+  await page.locator('#load-paste').click();
+  assert.match(await page.locator('#input-error').textContent(), /Line \d+: enabled must be true or false/);
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.match(await page.locator('#input-error').textContent(), /第 \d+ 行：enabled 必须是 true 或 false/);
+  await page.locator('#language-select').selectOption('en');
+  assert.match(await page.locator('#input-error').textContent(), /Line \d+/);
+  await page.locator('#load-default').click();
+  await page.locator('#new-group-name').fill('__proto__');
+  await page.locator('[data-action="add-group"]').click();
+  assert.match(await page.locator('#input-error').textContent(), /Enter a valid group name/);
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.match(await page.locator('#input-error').textContent(), /有效的分组名称/);
+  await page.locator('#language-select').selectOption('en');
+  console.log('PASS bilingual parser line errors and dynamic validation messages');
+
+  await page.reload();
+  assert.equal(await page.locator('#language-select').inputValue(), 'en');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+  assert.match(await status(), /Loaded 45 plugins/);
+  await page.locator('#language-select').focus();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'zh-CN');
+  await page.locator('#language-select').selectOption('en');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.screenshot({ path: join(screenshotDirectory, 'mobile-en.png'), fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: join(screenshotDirectory, 'desktop-en.png'), fullPage: true });
+  console.log('PASS saved language preference, keyboard switching and English mobile layout');
+
+  await page.locator('#board-edit').click();
+  assert.equal(await page.locator('.frame-center > #slot-header').count(), 1);
+  assert.equal(await page.locator('.frame > #slot-header').count(), 0);
+  const editPositions = await page.evaluate(() => {
+    const rect = id => { const box = document.getElementById(id).getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, bottom: box.bottom }; };
+    return { header: rect('slot-header'), before: rect('slot-beforeBody'), left: rect('slot-left'), footer: rect('slot-footer'), right: rect('slot-right') };
+  });
+  assert.ok(editPositions.left.x < editPositions.header.x);
+  assert.ok(editPositions.header.x < editPositions.right.x);
+  assert.equal(editPositions.footer.x, editPositions.header.x);
+  assert.equal(editPositions.footer.width, editPositions.header.width);
+  assert.ok(editPositions.before.y >= editPositions.header.bottom);
+  const originalDraft = await generate();
+  await page.locator('[data-action="close-output"]').click();
+  await page.locator('#board-effect').click();
+  await page.locator('#draft-effect').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.effect-page').evaluate(node => node.getBoundingClientRect().width <= node.parentElement.clientWidth), true);
+  await page.locator('#draft-fit').uncheck();
+  assert.equal(await page.locator('.frame').isVisible(), false);
+  assert.equal(await page.locator('[data-effect-source="graph"]').count(), 1);
+  assert.equal(await page.locator('[data-effect-source="spacer"]').count(), 0);
+  assert.equal(await page.locator('[data-effect-slot="right"] [data-effect-source="graph"]').count(), 1);
+  const mappingRows = await page.locator('.effect-component').evaluateAll(nodes => nodes.map(node => ({ slot: node.dataset.effectPosition, parentSlot: node.closest('[data-effect-slot]').dataset.effectSlot })));
+  assert.ok(mappingRows.every(row => row.slot === row.parentSlot));
+  const desktopGeometry = await page.evaluate(() => {
+    const box = selector => { const value = document.querySelector(selector).getBoundingClientRect(); return { x: value.x, y: value.y, width: value.width, bottom: value.bottom }; };
+    return { header: box('[data-effect-slot="header"]'), before: box('[data-effect-slot="beforeBody"]'), body: box('[data-effect-body]'), after: box('[data-effect-slot="afterBody"]'), footer: box('[data-effect-slot="footer"]'), left: box('[data-effect-slot="left"]'), right: box('[data-effect-slot="right"]') };
+  });
+  assert.equal(desktopGeometry.left.width, 320);
+  assert.equal(desktopGeometry.right.width, 320);
+  assert.equal(desktopGeometry.header.x, desktopGeometry.footer.x);
+  assert.equal(desktopGeometry.header.width, desktopGeometry.footer.width);
+  assert.ok(desktopGeometry.header.x > desktopGeometry.left.x);
+  assert.ok(desktopGeometry.header.x < desktopGeometry.right.x);
+  assert.ok(desktopGeometry.before.y >= desktopGeometry.header.bottom);
+  assert.ok(desktopGeometry.body.y >= desktopGeometry.before.bottom);
+  assert.ok(desktopGeometry.after.y >= desktopGeometry.body.bottom);
+  assert.equal(await generate(), originalDraft);
+  await page.locator('[data-action="close-output"]').click();
+  await page.locator('#draft-fit').check();
+  await page.locator('.effect-scroll').screenshot({ path: join(screenshotDirectory, 'effect-desktop.png') });
+  await page.locator('#draft-fit').uncheck();
+  console.log('PASS Quartz 5 edit/default-frame geometry, one-to-one slot mapping and pure draft viewing');
+
+  await page.locator('#board-edit').click();
+  await page.getByRole('combobox', { name: 'Move Graph to slot', exact: true }).selectOption('header');
+  await page.locator('#board-effect').click();
+  assert.equal(await page.locator('[data-effect-slot="header"] [data-effect-source="graph"]').count(), 1);
+  assert.equal(await page.locator('[data-effect-slot="right"] [data-effect-source="graph"]').count(), 0);
+  await page.locator('#draft-isIndex').check();
+  assert.equal(await page.locator('[data-effect-source="breadcrumbs"]').count(), 0);
+  await page.locator('#draft-isIndex').uncheck();
+  assert.equal(await page.locator('[data-effect-source="breadcrumbs"]').count(), 1);
+  await page.locator('#draft-width').selectOption('1000');
+  assert.equal(await page.locator('.effect-page').getAttribute('data-effect-viewport'), 'tablet');
+  assert.equal(await page.locator('[data-effect-source="table-of-contents"]').count(), 0);
+  const tabletGeometry = await page.evaluate(() => ({ right: document.querySelector('[data-effect-slot="right"]').getBoundingClientRect().y, centerBottom: document.querySelector('.effect-center').getBoundingClientRect().bottom }));
+  assert.ok(tabletGeometry.right >= tabletGeometry.centerBottom);
+  await page.locator('#draft-width').selectOption('390');
+  assert.equal(await page.locator('[data-effect-source="spacer"]').count(), 1);
+  const mobileGeometry = await page.evaluate(() => ({ leftBottom: document.querySelector('[data-effect-slot="left"]').getBoundingClientRect().bottom, headerTop: document.querySelector('[data-effect-slot="header"]').getBoundingClientRect().y, leftDirection: getComputedStyle(document.querySelector('[data-effect-slot="left"]')).flexDirection }));
+  assert.ok(mobileGeometry.headerTop >= mobileGeometry.leftBottom);
+  assert.equal(mobileGeometry.leftDirection, 'row');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.locator('.effect-scroll').screenshot({ path: join(screenshotDirectory, 'effect-mobile.png') });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('#draft-width').selectOption('1440');
+  await page.locator('#draft-page-type').selectOption('folder');
+  assert.equal(await page.locator('[data-effect-slot="right"] .effect-component').count(), 0);
+  assert.equal(await page.locator('[data-effect-source="reader-mode"]').count(), 0);
+  await page.locator('#draft-page-type').selectOption('content');
+  await page.locator('#draft-regions').check();
+  assert.equal(await page.locator('.effect-page').getAttribute('data-effect-regions'), 'true');
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.equal(await page.locator('#board-effect').textContent(), '效果预览');
+  assert.match(await page.locator('#draft-effect').textContent(), /不是运行中的 Quartz/);
+  await page.locator('#language-select').selectOption('en');
+  console.log('PASS live draft movement, conditions, desktop/tablet/mobile layout and bilingual page overrides');
+
+  await page.locator('#board-edit').click();
+  await page.locator('#page-template').selectOption('minimal');
+  await page.locator('#board-effect').click();
+  assert.equal(await page.locator('.effect-page').getAttribute('data-effect-template'), 'minimal');
+  assert.deepEqual(await page.locator('[data-effect-slot]').evaluateAll(nodes => nodes.map(node => node.dataset.effectSlot)), ['footer']);
+  assert.equal(await page.locator('[data-effect-body]').count(), 1);
+  await page.locator('#page-template').selectOption('full-width');
+  assert.equal(await page.locator('[data-effect-slot="left"], [data-effect-slot="right"]').count(), 0);
+  assert.equal(await page.locator('[data-effect-slot="beforeBody"]').count(), 1);
+  await page.locator('#page-template').selectOption('default');
+  await page.locator('#edit-group').selectOption('toolbar');
+  await page.locator('#group-direction').selectOption('row-reverse');
+  assert.equal(await page.locator('[data-effect-group="toolbar"]').evaluate(node => getComputedStyle(node).flexDirection), 'row-reverse');
+  await page.locator('#group-wrap').selectOption('wrap');
+  assert.equal(await page.locator('[data-effect-group="toolbar"]').evaluate(node => getComputedStyle(node).flexWrap), 'wrap');
+  const mapping = page.locator('.effect-mapping');
+  await mapping.locator('summary').click();
+  await mapping.locator('[data-action="draft-edit"]').filter({ hasText: 'graph → header' }).click();
+  assert.equal(await page.locator('#board-edit').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#properties-panel h2').textContent(), 'Graph');
+  assert.equal(await page.locator('iframe').count(), 0);
+  console.log('PASS actual full-width/minimal frame slots, group flex configuration and mapping-to-editor navigation');
+
+  for (const [browserLocale, expected] of [['en-US', 'en'], ['zh-TW', 'zh-CN']]) {
+    const clean = await browser.newContext({ offline: true, locale: browserLocale });
+    const cleanPage = await clean.newPage();
+    await cleanPage.goto(fileUrl);
+    assert.equal(await cleanPage.locator('html').getAttribute('lang'), expected);
+    const cleanRequests = [];
+    cleanPage.on('request', request => { if (/^https?:/.test(request.url())) cleanRequests.push(request.url()); });
+    await clean.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new Error('Storage denied'); } });
+    });
+    await cleanPage.reload();
+    assert.equal(await cleanPage.locator('html').getAttribute('lang'), expected);
+    await cleanPage.locator('#language-select').selectOption(expected === 'en' ? 'zh-CN' : 'en');
+    await cleanPage.locator('#generate-config').click();
+    assert.equal(await cleanPage.locator('#output-yaml').inputValue(), raw);
+    assert.deepEqual(cleanRequests, []);
+    await clean.close();
+  }
+  assert.equal(await page.locator('iframe, #site-preview-panel').count(), 0);
+  assert.deepEqual(network, []);
+  assertNoErrors();
+  console.log('PASS browser-language fallback, denied storage, zero iframe and zero HTTP requests in both locales');
 } finally { await browser.close(); }

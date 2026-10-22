@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quartz Layout Editor 0.1 · 布局编辑器</title>
+<title>Quartz Layout Editor 0.2 · 布局编辑器</title>
 <meta name="description" content="完全离线的 Quartz v5 布局编辑器：拖动、调整、复制配置。">
 <style>
   :root {
@@ -135,10 +135,9 @@
   .check-line { display: flex; align-items: center; gap: 8px; font-size: 12px; }
   .board-info { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 5px; }
   .legend-dash { display: inline-block; width: 13px; height: 9px; border: 1px dashed var(--teal); margin-right: 4px; }
-  .frame { display: grid; grid-template-columns: minmax(150px, .95fr) minmax(160px, 1.25fr) minmax(150px, .95fr); grid-template-areas: "header header header" "left center right" "footer footer footer"; gap: 12px; padding: 16px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 22px; }
+  .frame { display: grid; grid-template-columns: minmax(150px, .95fr) minmax(160px, 1.25fr) minmax(150px, .95fr); grid-template-areas: "left center right" "left footer right"; gap: 12px; padding: 16px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 22px; }
   .frame-center { grid-area: center; display: flex; flex-direction: column; gap: 12px; }
   .slot { border: 1px solid var(--line); border-radius: 13px; background: var(--surface); padding: 10px; align-self: stretch; }
-  .slot-header { grid-area: header; }
   .slot-left { grid-area: left; }
   .slot-right { grid-area: right; }
   .slot-footer { grid-area: footer; }
@@ -191,7 +190,8 @@
   .position-checks label { display: flex; align-items: center; gap: 6px; font-size: 11px; }
   fieldset { margin: 12px 0 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
   legend { font-size: 11px; color: var(--muted); padding: 0 4px; }
-  .footer-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; font-size: 11px; color: var(--muted); }
+  .footer-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .project-link { color: var(--teal-strong); text-decoration: underline; text-underline-offset: 3px; }
   .status { min-height: 23px; overflow-wrap: anywhere; }
   .status[data-tone="error"] { color: var(--danger); }
   .status[data-tone="warning"] { color: var(--amber); }
@@ -221,7 +221,7 @@
     .source-actions { width: 100%; }
     .source-actions button { flex: 1 1 auto; }
     .left-rail, .right-rail { grid-template-columns: minmax(0, 1fr); }
-    .frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "header" "left" "center" "right" "footer"; padding: 10px; gap: 10px; }
+    .frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "center" "right" "footer"; padding: 10px; gap: 10px; }
     .page-body { min-height: 210px; }
     .card-controls { grid-template-columns: 34px 34px minmax(0, 1fr); }
     .card-name { font-size: 13px; }
@@ -232,26 +232,108 @@
     .modal-body { max-height: calc(100dvh - 210px); }
     .output-text { height: 240px; }
   }
+  .component-english { display: block; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+  .component-description { margin: 6px 0 0; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .language-control, .modal-language { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .language-control select, .modal-language select { width: auto; min-width: 95px; }
+  .modal-head { flex-wrap: wrap; }
+  .guide-panel { margin-bottom: 18px; padding: 0 18px 16px; }
+  .guide-panel summary { padding-left: 0; padding-right: 0; font-weight: 600; }
+  .guide-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .guide-step { padding: 12px; border-radius: 10px; background: var(--surface-muted); min-width: 0; }
+  .guide-step h3 { margin: 0 0 6px; font-size: 13px; }
+  .guide-step p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+  .guide-note { margin: 12px 0 0; font-size: 12px; }
+  @media (max-width: 900px) { .guide-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (prefers-reduced-motion: no-preference) { button, .card { transition: border-color .14s, background-color .14s, box-shadow .14s; } }
+  [hidden] { display: none !important; }
+  .board-modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .board-modes button[aria-pressed="true"] { background: var(--teal-strong); color: var(--surface); }
+  .effect-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 14px; }
+  .effect-controls .field { flex: 1 1 160px; }
+  .effect-context { display: flex; flex-wrap: wrap; gap: 14px; }
+  .effect-scroll { max-width: 100%; overflow: auto; border: 1px solid var(--line); border-radius: 14px; margin-top: 14px; background: var(--surface-muted); padding: 10px; }
+  .effect-page { box-sizing: border-box; width: 1440px; display: grid; grid-template-columns: 320px minmax(0, 1fr) 320px; grid-template-areas: "left center right" "left footer right"; gap: 5px; background: var(--paper); color: var(--ink); font: 16px/1.65 Georgia, "Songti SC", serif; margin: 0 auto; }
+  .effect-page *, .effect-page *::before, .effect-page *::after { box-sizing: border-box; }
+  .effect-page .effect-center { grid-area: center; min-width: 0; padding-top: 6rem; }
+  .effect-page .effect-slot-left { grid-area: left; display: flex; flex-direction: column; gap: 1.2rem; padding: 6rem 2rem 2rem; }
+  .effect-page .effect-slot-right { grid-area: right; display: flex; flex-direction: column; gap: 1.2rem; padding: 6rem 2rem 2rem; }
+  .effect-page .effect-slot-footer { grid-area: footer; padding: 22px 0; }
+  .effect-page .effect-slot-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .effect-page .effect-slot-header:empty { display: none; }
+  .effect-slot { min-width: 0; position: relative; }
+  .effect-slot-label { display: none; font: 10px/1.4 Consolas, monospace; color: var(--teal-strong); padding: 4px; margin-bottom: 5px; border-bottom: 1px dashed var(--line); }
+  .effect-page[data-effect-regions="true"] .effect-slot-label { display: block; }
+  .effect-page[data-effect-regions="true"] .effect-slot { outline: 1px dashed var(--line); outline-offset: -1px; }
+  .effect-component { min-width: 0; overflow-wrap: anywhere; }
+  .effect-component + .effect-component { margin-top: 8px; }
+  .effect-group { display: flex; min-width: 0; align-items: center; }
+  .effect-group-member { min-width: 0; }
+  .effect-site-title { color: var(--teal-strong); font-size: 28px; line-height: 1.25; font-weight: 700; }
+  .effect-page h1.effect-article-title { font-size: 32px; margin: 12px 0 0; line-height: 1.25; }
+  .effect-page .effect-widget-heading { font: 700 16px/1.6 Georgia, "Songti SC", serif; margin-bottom: 6px; }
+  .effect-search { font: 14px/1.6 Georgia, serif; border: 1px solid var(--line); background: var(--surface-muted); border-radius: 6px; color: var(--muted); padding: 4px 8px; white-space: nowrap; }
+  .effect-icon { font-size: 24px; line-height: 1.2; }
+  .effect-spacer { flex: 1; min-width: 16px; min-height: 16px; }
+  .effect-tree { font-size: 14px; color: var(--muted); line-height: 2; }
+  .effect-tree > div { padding-left: 14px; border-left: 1px solid var(--line); margin-left: 4px; }
+  .effect-link { color: var(--teal-strong); font-size: 14px; padding: 2px 0; }
+  .effect-meta, .effect-properties { font-size: 13px; color: var(--muted); }
+  .effect-breadcrumb { color: var(--teal-strong); font-size: 14px; }
+  .effect-list { font-size: 14px; padding-left: 18px; color: var(--muted); }
+  .effect-graph { width: 100%; height: 165px; border: 1px solid var(--line); border-radius: 6px; }
+  .effect-graph path { fill: none; stroke: var(--line); stroke-width: 2px; }
+  .effect-graph circle { fill: var(--teal); }
+  .effect-tags { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; color: var(--teal-strong); }
+  .effect-tags > span { background: var(--surface-muted); padding: 2px 5px; border-radius: 5px; }
+  .effect-body { padding: 12px 0 20px; min-height: 480px; }
+  .effect-page .effect-body h2 { font: 700 24px/1.4 Georgia, "Songti SC", serif; margin: 30px 0 12px; }
+  .effect-body p { margin: 18px 0; }
+  .effect-body blockquote { padding-left: 16px; border-left: 3px solid var(--teal); color: var(--muted); margin: 20px 0; }
+  .effect-code { padding: 16px; background: var(--surface-muted); font: 13px/1.6 Consolas, monospace; border: 1px solid var(--line); border-radius: 6px; }
+  .effect-comment { border: 1px solid var(--line); border-radius: 8px; padding: 20px; font-size: 14px; color: var(--muted); }
+  .effect-footer { font-size: 13px; color: var(--muted); }
+  .effect-stack { padding: 8px; background: var(--surface-muted); }
+  .effect-stack > div { border: 1px solid var(--line); padding: 12px; margin: 4px; background: var(--paper); }
+  .effect-page[data-effect-viewport="tablet"] { width: 1000px; grid-template-columns: 320px minmax(0, 1fr); grid-template-areas: "left center" "left right" "left footer"; padding: 0 16px; }
+  .effect-page[data-effect-viewport="mobile"] { width: 390px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "center" "right" "footer"; padding: 0 16px; }
+  .effect-page:not([data-effect-viewport="desktop"]) .effect-slot-right { flex-direction: row; padding: 0; gap: 12px; }
+  .effect-page:not([data-effect-viewport="desktop"]) .effect-slot-right > :not(.effect-slot-label) { flex: 1; min-width: 0; }
+  .effect-page[data-effect-viewport="mobile"] .effect-slot-left { flex-direction: row; padding: 32px 0 0; gap: 0; align-items: center; flex-wrap: nowrap; }
+  .effect-page[data-effect-viewport="mobile"] .effect-center { padding-top: 0; }
+  .effect-page[data-effect-viewport="mobile"] .effect-site-title { font-size: 23px; }
+  .effect-page[data-effect-viewport="mobile"] .effect-explorer .effect-tree { display: none; }
+  .effect-page[data-effect-viewport="mobile"] .effect-explorer .effect-widget-heading { font-size: 0; }
+  .effect-page[data-effect-viewport="mobile"] .effect-explorer .effect-widget-heading::after { content: "☰"; font-size: 24px; }
+  .effect-page[data-effect-viewport="mobile"] .effect-search { font-size: 0; padding: 4px; }
+  .effect-page[data-effect-viewport="mobile"] .effect-search > span { font-size: 22px; }
+  .effect-page[data-effect-template="full-width"], .effect-page[data-effect-template="minimal"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "center" "footer"; padding-left: 32px; padding-right: 32px; }
+  .effect-page[data-effect-template="minimal"] .effect-center { padding-top: 0; }
+  .effect-mapping { margin-top: 12px; }
+  .effect-mapping > div { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 0; }
+  .effect-mapping button { font-size: 11px; overflow-wrap: anywhere; }
+  @media (max-width: 680px) { .effect-controls { align-items: stretch; } .effect-context { flex-direction: column; } }
+
 </style>
 </head>
 <body>
-  <a class="skip-link" href="#layout-board">跳到布局画布</a>
+  <a class="skip-link" href="#layout-board" data-i18n="skip">跳到布局画布</a>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-        <div><div class="eyebrow">QUARTZ · LAYOUT STUDIO</div><h1>让每个组件，各就其位。</h1><p class="subtitle">Quartz v5 布局编辑器 · 本地离线 · 不改动你的项目文件</p></div>
+        <div><div class="eyebrow" data-i18n="brand">QUARTZ · 布局工作台</div><h1 data-i18n="heading">让每个组件，各就其位。</h1><p class="subtitle" data-i18n="subtitle">Quartz v5 布局编辑器 · 完全离线 · 不改动你的项目文件</p></div>
       </div>
-      <div class="toolbar"><span class="pill neutral">0.1 · 完全离线</span><button id="theme-toggle" type="button" data-action="theme" aria-label="切换明暗主题">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate">生成配置</button></div>
+      <div class="toolbar"><span class="pill neutral" data-i18n="offline">0.2 · 离线编辑</span><label class="language-control" for="language-select"><span data-i18n="language">界面语言</span><select id="language-select"><option value="zh-CN">中文</option><option value="en">English</option></select></label><button id="theme-toggle" type="button" data-action="theme" data-i18n="theme" data-i18n-aria="themeLabel">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate" data-i18n="generate">生成配置</button></div>
     </header>
-    <section id="input-panel" class="input-panel" aria-label="配置来源"></section>
+    <section id="guide-panel" class="panel guide-panel" data-i18n-aria="guideLabel"></section>
+    <section id="input-panel" class="input-panel" data-i18n-aria="sourceLabel"></section>
     <main class="workspace">
-      <aside class="left-rail" aria-label="组件托盘与非布局插件"><section id="tray-panel" class="panel"></section><details id="plugins-panel" class="panel"></details></aside>
-      <section id="layout-board" tabindex="-1" aria-label="六槽位布局画布"></section>
-      <aside class="right-rail" aria-label="组件与页面属性"><section id="properties-panel" class="panel"></section><section id="groups-panel" class="panel"></section><section id="pages-panel" class="panel"></section></aside>
+      <aside class="left-rail" data-i18n-aria="leftRail"><section id="tray-panel" class="panel"></section><details id="plugins-panel" class="panel"></details></aside>
+      <section id="layout-board" tabindex="-1" data-i18n-aria="canvas"></section>
+      <aside class="right-rail" data-i18n-aria="rightRail"><section id="properties-panel" class="panel"></section><section id="groups-panel" class="panel"></section><section id="pages-panel" class="panel"></section></aside>
     </main>
-    <footer class="footer-bar"><p id="status-text" class="status" role="status" aria-live="polite" aria-atomic="true">正在准备编辑器…</p><p>仅编辑布局与启用状态 · 输出 LF / UTF-8 文本</p></footer>
+    <footer class="footer-bar"><p id="status-text" class="status" role="status" aria-live="polite" aria-atomic="true"></p><p data-i18n="footer">仅编辑布局与启用状态 · 输出 LF / UTF-8 文本</p><a id="project-link" class="project-link" href="https://github.com/buzhidao10068/quartz-layout-editor" target="_blank" rel="noopener noreferrer" data-i18n="projectLink">项目地址 · GitHub ↗</a></footer>
   </div>
   <div id="modal-host"></div>
 
@@ -569,8 +651,33 @@ const QuartzEditor = (() => {
     source: `@quartz-community/${name}`, displayName, defaultPosition, defaultPriority,
     category: extra ? [extra, "component"] : ["component"],
   }));
+  const COMPONENT_HELP = {
+    "article-title": ["文章标题", "当前文章的标题，通常显示在正文上方。与网站标题不是同一个组件。"],
+    "backlinks": ["反向链接", "列出哪些笔记链接到了当前文章，方便发现相关内容。"],
+    "breadcrumbs": ["面包屑导航", "显示当前位置的目录路径，方便返回上级文件夹。"],
+    "comments": ["评论区", "在文章下方显示评论入口；需要你另外配置评论服务。"],
+    "content-meta": ["文章信息", "显示文章日期、阅读时间等摘要信息。"],
+    "darkmode": ["明暗主题切换", "让读者切换网站的浅色和深色主题。"],
+    "explorer": ["文件目录", "用树状目录展示笔记和文件夹，方便浏览站点。"],
+    "footer": ["页脚", "页面底部的版权信息和链接区域。"],
+    "graph": ["关系图谱", "用节点和连线展示当前笔记与其他笔记的关联。"],
+    "note-properties": ["笔记属性", "展示笔记中的标签、别名、描述等属性；禁用也会关闭对应转换器。"],
+    "page-title": ["网站标题", "显示整个网站的名称，通常点击可回到首页。不是当前文章标题；名称在 configuration.pageTitle 中设置，本工具不修改它。"],
+    "reader-mode": ["阅读模式", "让读者切换到更专注的阅读界面。"],
+    "recent-notes": ["最近笔记", "展示最近更新的笔记，方便发现新内容。"],
+    "search": ["站内搜索", "搜索网站中的笔记与文章。"],
+    "spacer": ["占位间距", "在布局中留出空隙，本身不展示文章内容。"],
+    "stacked-pages": ["堆叠页面", "支持以堆叠方式浏览多个笔记页面。"],
+    "table-of-contents": ["文章目录", "列出当前文章的标题层级，可点击跳转；禁用也会关闭目录转换器。"],
+    "tag-list": ["标签列表", "显示当前文章的标签，方便进入相同标签的页面。"],
+  };
+  CATALOG.forEach(component => {
+    const [chineseName, description] = COMPONENT_HELP[component.source.split("/").pop()];
+    component.chineseName = chineseName;
+    component.description = description;
+  });
   const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
-  const fail = (message, line) => { throw new Error(line === undefined ? message : `第 ${line + 1} 行：${message}`); };
+  const fail = (message, line) => { const error = new Error(line === undefined ? message : `第 ${line + 1} 行：${message}`); error.reason = message; error.line = line; throw error; };
   const safeKey = (key, line) => {
     if (["__proto__", "constructor", "prototype"].includes(key)) fail("不支持的键名", line);
     return key;
@@ -959,6 +1066,52 @@ const QuartzEditor = (() => {
     }
     return result.sort((first, second) => first.priority - second.priority);
   }
+  function resolveDraftLayout(state, context = {}) {
+    const width = context.width ?? 1440;
+    const viewport = width <= 800 ? "mobile" : width < 1200 ? "tablet" : "desktop";
+    const page = state.byPageType[context.pageType ?? "content"] ?? {};
+    const requestedTemplate = page.template ?? "default";
+    const template = ["default", "full-width", "minimal"].includes(requestedTemplate) ? requestedTemplate : "default";
+    const excluded = new Set(page.exclude ?? []);
+    const view = { ...state, entries: state.entries.filter(entry => !excluded.has(entry.shortName)) };
+    const hidden = [];
+    const unknownConditions = new Set();
+    const frameSlots = template === "minimal" ? ["footer"] : template === "full-width" ? ["header", "beforeBody", "afterBody", "footer"] : POSITIONS;
+    const slots = {};
+    const conditionValues = { "not-index": !(context.isIndex ?? false), "has-tags": context.hasTags ?? true, "has-backlinks": context.hasBacklinks ?? true, "has-toc": context.hasToc ?? true };
+    function visibility(entry, grouped) {
+      if (!frameSlots.includes(effectiveLayout(entry).position)) return "template";
+      if (entry.layout) {
+        if (entry.layout.display === "mobile-only" && viewport !== "mobile") return "display";
+        if (entry.layout.display === "desktop-only" && viewport === "mobile") return "display";
+        const condition = entry.layout.condition;
+        if (condition && Object.hasOwn(conditionValues, condition) && !conditionValues[condition]) return "condition";
+        if (condition && !Object.hasOwn(conditionValues, condition)) unknownConditions.add(condition);
+      }
+      if (viewport !== "desktop" && effectiveLayout(entry).position === "right" && entry.shortName === "table-of-contents" && !grouped && !entry.layout?.condition && (!entry.layout?.display || entry.layout.display === "all")) return "responsive";
+      return null;
+    }
+    for (const position of POSITIONS) {
+      const cleared = Object.hasOwn(page.positions ?? {}, position);
+      slots[position] = [];
+      for (const item of slotEntries(view, position)) {
+        if (item.kind === "entry") {
+          const reason = cleared ? "cleared" : visibility(item.entry, false);
+          if (reason) hidden.push({ id: item.entry.id, position, reason });
+          else slots[position].push(item);
+        } else {
+          const members = item.members.filter(entry => {
+            const reason = cleared ? "cleared" : visibility(entry, true);
+            if (reason) hidden.push({ id: entry.id, position, reason });
+            return !reason;
+          });
+          if (!cleared && frameSlots.includes(position)) slots[position].push({ ...item, members });
+        }
+      }
+    }
+    for (const entry of state.entries) if (entry.enabled && entry.catalog && excluded.has(entry.shortName)) hidden.push({ id: entry.id, position: effectiveLayout(entry).position, reason: "excluded" });
+    return { width, viewport, template, requestedTemplate, frameSlots, slots, hidden, unknownConditions: [...unknownConditions], unsupportedTemplate: template !== requestedTemplate };
+  }
 
   function updateEntry(state, id, patch) {
     const entry = state.entries.find(item => item.id === id);
@@ -1053,35 +1206,262 @@ const QuartzEditor = (() => {
   }
   return { POSITIONS, PAGE_TYPES, CATALOG, normalize, splitTopLevel, parsePlugins, parseLayoutSection,
     load, originalText, effectiveLayout, emitLayoutBlock, emitLayoutSection, generate, diffLines,
-    slotEntries, updateEntry, updatePageType, place, move };
+    slotEntries, resolveDraftLayout, updateEntry, updatePageType, place, move };
 })();
 </script>
 <script id="quartz-editor-ui">
 (() => {
   "use strict";
-  const slotLabels = { header: "页头", left: "左侧栏", beforeBody: "正文之前", afterBody: "正文之后", right: "右侧栏", footer: "页脚", tray: "托盘（禁用）" };
-  const pageLabels = { "404": "未找到", content: "文章", folder: "文件夹", tag: "标签", canvas: "画布", bases: "数据库" };
+  const COPY = {
+    projectLink: ["项目地址 · GitHub ↗", "Project repository · GitHub ↗"],
+    title: ["Quartz Layout Editor 0.2 · 布局编辑器", "Quartz Layout Editor 0.2"],
+    brand: ["QUARTZ · 布局工作台", "QUARTZ · LAYOUT STUDIO"],
+    heading: ["让每个组件，各就其位。", "A place for every component."],
+    subtitle: ["Quartz v5 布局编辑器 · 完全离线 · 不改动你的项目文件", "Quartz v5 layout editor · Fully offline · Your project files stay untouched"],
+    offline: ["0.2 · 离线编辑", "0.2 · Offline editor"], language: ["界面语言", "Interface language"],
+    theme: ["切换主题", "Toggle theme"], themeLabel: ["切换明暗主题", "Toggle light and dark theme"],
+    generate: ["生成配置", "Generate config"], skip: ["跳到布局画布", "Skip to layout canvas"],
+    leftRail: ["组件托盘与非布局插件", "Component tray and non-layout plugins"], canvas: ["六槽位布局画布", "Six-slot layout canvas"],
+    rightRail: ["组件与页面属性", "Component and page properties"], guideLabel: ["新手使用指南", "First-use guide"],
+    sourceLabel: ["配置来源", "Configuration source"], footer: ["仅编辑布局与启用状态 · 输出 LF / UTF-8 文本", "Layout and enabled state only · LF / UTF-8 output"],
+    guideTitle: ["第一次使用？按这四步完成布局修改", "First time here? Follow these four steps"],
+    step1Title: ["1 · 载入你的配置", "1 · Load your configuration"],
+    step1: ["已有网站？选择或粘贴完整的 quartz.config.yaml。只想试用？保留内置默认配置即可。内容不会上传。", "Already have a site? Choose or paste the complete quartz.config.yaml. Just exploring? Use the bundled default configuration. Nothing is uploaded."],
+    step2Title: ["2 · 移动和设置组件", "2 · Move and configure components"],
+    step2: ["拖卡片左上角握柄到目标区域，或使用 ↑ ↓ 和位置菜单。点击组件名称查看用途和属性。数字越小越靠前。", "Drag the grip at the top left of a card, or use ↑ ↓ and the position menu. Select a component name for its purpose and properties. Lower priority numbers appear first."],
+    step3Title: ["3 · 生成并核对", "3 · Generate and review"],
+    step3: ["点击「生成配置」，展开改动对照检查改了哪里，再复制完整 YAML。想只改当前组件，请关闭自动重排优先级。", "Select Generate config, review the line diff, then copy the complete YAML. Turn off automatic priority renumbering to keep changes limited to the moved component."],
+    step4Title: ["4 · 手动应用到网站", "4 · Apply to your site manually"],
+    step4: ["先备份原配置，把结果粘回你自己的文件。按你的 Quartz 工作流重新构建或重启，再打开你的网站确认效果。", "Back up your original config and paste the result into your own file. Rebuild or restart through your usual Quartz workflow, then check your site."],
+    guideTitles: ["网站标题（Page Title）是整个网站的名字；文章标题（Article Title）是当前文章的标题。英文标识保留作对照。", "Page Title is the name of your whole website. Article Title is the heading of the current article. Canonical identifiers remain unchanged."],
+    guideStates: ["虚线「隐式布局」= 已启用、使用插件默认位置；托盘「已禁用」= 不显示，拖入会启用。分组 = 把多个组件放在同一容器。禁用带「转换器」的组件还会影响内容处理。", "Dashed Implicit layout cards are enabled and use plugin defaults. Disabled cards stay in the tray; placing one enables it. A group puts components in one container. Disabling a transformer/component plugin also affects content processing."],
+    guideSafety: ["布局草稿 ≠ 真实网站：这里只是槽位示意，不会自动修改、构建或启动你的 Quartz；效果预览使用示例内容。配置仅在当前页面内存中处理；请在关闭页面前复制结果。", "The layout draft is not your live site. This is a slot diagram: it does not edit files, build or start Quartz. The offline draft preview uses sample content. Configuration stays in this page's memory; copy your result before closing the page."],
+    noSource: ["尚未载入配置", "No configuration loaded"], defaultSource: ["Quartz 默认配置（内置快照）", "Quartz default config (bundled snapshot)"], pasteSource: ["粘贴的配置", "Pasted configuration"], fileSource: ["本地配置文件", "Local configuration file"],
+    loadedAt: ["载入于 {time}", "Loaded at {time}"], dirty: ["有未生成的改动", "Ungenerated changes"], synced: ["已生成或无改动", "Generated or unchanged"],
+    loadDefault: ["从默认配置开始", "Start with defaults"], chooseFile: ["选择 YAML 文件", "Choose YAML file"], fileLabel: ["选择配置文件", "Choose configuration file"], paste: ["粘贴配置", "Paste configuration"],
+    loading: ["正在读取文件，请稍候…", "Reading file, please wait…"], confirmLabel: ["切换来源确认", "Confirm source change"],
+    confirmText: ["当前有未生成的改动。载入另一份配置会丢弃这些改动，是否继续？", "You have ungenerated changes. Loading another configuration will discard them. Continue?"],
+    confirmLoad: ["丢弃改动并载入", "Discard changes and load"], cancelLoad: ["保留当前编辑", "Keep current edits"],
+    pasteTitle: ["粘贴完整的 quartz.config.yaml", "Paste the complete quartz.config.yaml"], pasteHint: ["内容只在当前页面内存中处理，不上传、不自动保存。", "Processed only in this page's memory. No uploads or automatic saves."],
+    pastePlaceholder: ["在这里粘贴配置内容…", "Paste your configuration here…"], loadPaste: ["载入粘贴内容", "Load pasted config"], closePaste: ["收起", "Collapse"],
+    slotHeader: ["页头", "Header"], slotLeft: ["左侧栏", "Left sidebar"], slotBefore: ["正文之前", "Before body"], slotAfter: ["正文之后", "After body"], slotRight: ["右侧栏", "Right sidebar"], slotFooter: ["页脚", "Footer"], slotTray: ["托盘（禁用）", "Tray (disabled)"],
+    componentLabel: ["{name} 组件", "{name} component"], editComponent: ["编辑 {name}", "Edit {name}"], priorityValue: ["优先级 {value}", "Priority {value}"],
+    implicit: ["隐式布局", "Implicit layout"], invalidSlot: ["无效槽位 {value}：运行时会忽略", "Invalid slot {value}: ignored at runtime"], disabled: ["已禁用", "Disabled"], selected: ["正在编辑", "Selected"], dual: ["组件 + 转换器", "Component + transformer"],
+    moveUp: ["{name} 上移", "Move {name} up"], moveDown: ["{name} 下移", "Move {name} down"], moveSlot: ["移动 {name} 到槽位", "Move {name} to slot"], moveGroup: ["移动 {name} 到分组", "Move {name} to group"], noGroup: ["不分组（移出组）", "Ungrouped (leave group)"], groupOption: ["组 · {name}", "Group · {name}"],
+    groupLabel: ["分组 {name}", "Group {name}"], editGroupLabel: ["编辑组 {name}", "Edit group {name}"], editGroup: ["编辑组", "Edit group"], groupMeta: ["组优先级 {priority} · {direction}", "Group priority {priority} · {direction}"],
+    slotLabel: ["{name} {position} 槽位", "{name} {position} slot"], emptySlot: ["拖入组件，或使用卡片的槽位菜单", "Drop a component here or use its slot menu"],
+    boardKicker: ["布局示意 · 编辑草稿", "LAYOUT DIAGRAM · DRAFT"], boardTitle: ["页面布局", "Page layout"], count: ["{count} 个组件", "{count} components"], boardHint: ["拖握柄调整位置 · 也可使用 ↑ ↓ 和菜单", "Drag a grip, or use ↑ ↓ and menus"], implicitLegend: ["虚线 = 使用插件默认布局", "Dashed = plugin default layout"], renumber: ["自动重排优先级（步长 10）", "Renumber priorities automatically (steps of 10)"],
+    bodyLabel: ["正文 pageBody，不可放置组件", "Page body: components cannot be placed here"], bodyKicker: ["固定正文 · pageBody", "FIXED CONTENT · pageBody"], bodyTitle: ["留一点空间，给内容。", "Leave some room for your content."], bodyText: ["这里是文章本身。把导航放在两侧，让信息自然流动。", "Your article goes here. Put navigation around it and let the content breathe."], bodyBadge: ["不可放置组件 · 仅为布局示意", "No components here · Diagram only"],
+    trayTitle: ["组件托盘", "Component tray"], trayIntro: ["暂时不用的组件放在这里。移入槽位即可启用；移回托盘会禁用插件。", "Keep unused components here. Placing one in a slot enables it; moving it back disables its plugin."], trayLabel: ["已禁用组件托盘", "Disabled component tray"], emptyTray: ["没有禁用的布局组件。可将卡片拖到这里。", "No disabled layout components. Drag a card here to disable it."],
+    pluginsTitle: ["非布局插件", "Non-layout plugins"], pluginsIntro: ["这些插件处理内容或生成页面，不是可拖动卡片。仅可切换启用状态，其余配置保留原样。", "These plugins process content or generate pages, not draggable cards. You can toggle enabled state; other settings stay untouched."], noPlugins: ["没有非布局插件。", "No non-layout plugins."], enablePlugin: ["启用 {name}", "Enable {name}"],
+    properties: ["组件属性", "Component properties"], selectHint: ["选中一张卡片，调整显示条件、位置和分组。", "Select a card to edit its display rules, position and group."], pluginSource: ["插件标识：{source}", "Plugin source: {source}"], enableComponent: ["启用组件", "Enable component"], position: ["位置（position）", "Position"], priority: ["优先级（priority）", "Priority"], priorityHint: ["数字越小越靠前；自动重排会重新分配数字。", "Lower numbers appear first. Automatic renumbering reassigns these numbers."], display: ["显示范围（display）", "Display"], condition: ["显示条件（condition）", "Condition"],
+    conditionHint: ["自定义条件需在 Quartz 注册；未知条件会警告并无条件显示。not-index = 非首页；has-tags = 有标签；has-backlinks = 有反向链接；has-toc = 有目录。", "Custom conditions must be registered in Quartz; unknown names warn and display unconditionally. Presets: not-index, has-tags, has-backlinks, has-toc."], notIndex: ["非首页", "Not the index page"], hasTags: ["文章有标签", "Has tags"], hasBacklinks: ["文章有反向链接", "Has backlinks"], hasToc: ["文章有目录", "Has a table of contents"],
+    group: ["分组（group）", "Group"], groupHint: ["空值表示移出分组；新名称会创建默认组。", "Leave blank to ungroup. A new name creates a default group."], groupOptions: ["组内布局（groupOptions）", "Group options"], grow: ["允许扩展（grow）", "Grow"], shrink: ["允许收缩（shrink）", "Shrink"], basis: ["基础宽度（basis）", "Basis"], order: ["组内顺序（order）", "Order"], align: ["交叉轴对齐（align）", "Align"], justify: ["主轴分布（justify）", "Justify"], unset: ["未设置", "Not set"], yes: ["是（true）", "Yes (true)"], no: ["否（false）", "No (false)"],
+    dualWarning: ["禁用此插件也会关闭其转换器，不只是隐藏组件。", "Disabling this plugin also disables its transformer, not just its component."],
+    groupsTitle: ["分组容器", "Group containers"], chooseGroup: ["选择分组", "Select group"], groupPlaceholder: ["选择或创建分组", "Select or create a group"], newGroup: ["新分组名称", "New group name"], createGroup: ["创建分组", "Create group"], groupPriority: ["组优先级", "Group priority"], direction: ["方向", "Direction"], defaultRow: ["默认横向排列（row）", "Default horizontal (row)"], wrapLabel: ["换行", "Wrap"], gap: ["间距", "Gap"], groupIntro: ["卡片分组菜单与拖入组容器使用同一移动逻辑。", "The group menu and drag-and-drop use the same movement logic."],
+    pagesTitle: ["页面类型覆盖", "Page-type overrides"], pagesIntro: ["此处不支持添加或重排组件，只能清空和排除。", "You can only clear slots and exclude components here, not add or reorder them."], pageType: ["页面类型", "Page type"], page404: ["未找到", "Not found"], pageContent: ["文章", "Content"], pageFolder: ["文件夹", "Folder"], pageTag: ["标签", "Tag"], pageCanvas: ["画布", "Canvas"], pageBases: ["数据库", "Bases"], template: ["模板", "Template"], exclude: ["排除组件短名", "Exclude component short names"], excludeHint: ["使用逗号分隔，例如 reader-mode, graph。", "Separate with commas, for example reader-mode, graph."], clearSlots: ["清空槽位", "Clear slots"], clearSlot: ["清空 {name}（{position}）", "Clear {name} ({position})"], minimalWarning: ["minimal 模板只保留正文与页脚，header、beforeBody、left、right、afterBody 五个槽位不会显示。", "The minimal template keeps body and footer only; header, beforeBody, left, right and afterBody (five slots) will not appear."],
+    outputTitle: ["生成的 quartz.config.yaml", "Generated quartz.config.yaml"], closeOutput: ["关闭输出", "Close output"], close: ["关闭", "Close"], outputIntro: ["仅供手动复制粘贴；不会写入站点。{count} 行变动。", "Copy and paste manually; no site files are written. {count} changed lines."], completeConfig: ["完整配置", "Complete configuration"], diff: ["逐行改动对照（diff，{count} 行）", "Line diff ({count} changed lines)"], noChanges: ["没有改动", "No changes"], copy: ["复制完整配置", "Copy complete configuration"], outputEncoding: ["LF 换行 · 无 BOM · 保留末尾换行状态", "LF line endings · No BOM · Original trailing newline preserved"],
+    preparing: ["正在准备编辑器…", "Preparing the editor…"], loaded: ["已载入 {count} 个插件，配置仅在内存中处理。", "Loaded {count} plugins. Configuration is processed in memory only."], sourceConfirm: ["切换配置前，请确认是否丢弃改动。", "Confirm whether to discard changes before loading another configuration."], moved: ["{name} 已移至 {slot}{index}。", "{name} moved to {slot}{index}."], moveIndex: [" 第 {index} 位", " at position {index}"], transformerWarning: ["{name} 已禁用：转换器也会连带关闭，可能影响内容处理。", "{name} is disabled. Its transformer is also disabled, which may affect content processing."], propertyUpdated: ["{name} 属性已更新。", "Updated {name} properties."], pluginUpdated: ["插件启用状态已更新。", "Plugin enabled state updated."], generated: ["已生成配置；请先核对 diff 再手动粘贴。", "Configuration generated. Review the diff before pasting manually."], copied: ["已复制，可粘贴到你的配置文件。", "Copied. Paste into your configuration file."], copyFallback: ["自动复制不可用：配置已全选，请按 Ctrl+C。", "Automatic copy is unavailable. The configuration is selected; press Ctrl+C."], invalidGroup: ["请输入有效的分组名称。", "Enter a valid group name."], errorLine: ["第 {line} 行：{reason}", "Line {line}: {reason}"], unknownError: ["操作失败：{reason}", "Operation failed: {reason}"],
+    enumAll: ["所有设备（all）", "All devices (all)"], enumMobile: ["仅手机（mobile-only）", "Mobile only"], enumDesktop: ["仅桌面（desktop-only）", "Desktop only"], enumStart: ["起点对齐（start）", "Start"], enumEnd: ["末端对齐（end）", "End"], enumCenter: ["居中（center）", "Center"], enumStretch: ["拉伸填满（stretch）", "Stretch"], enumBetween: ["两端分布（between）", "Space between"], enumAround: ["均匀留白（around）", "Space around"], enumRow: ["横向排列（row）", "Row"], enumRowReverse: ["横向反向（row-reverse）", "Reverse row"], enumColumn: ["纵向排列（column）", "Column"], enumColumnReverse: ["纵向反向（column-reverse）", "Reverse column"], enumNoWrap: ["不换行（nowrap）", "No wrapping"], enumWrap: ["允许换行（wrap）", "Wrap"], enumWrapReverse: ["反向换行（wrap-reverse）", "Reverse wrap"], enumDefault: ["默认页面（default）", "Default"], enumFullWidth: ["全宽页面（full-width）", "Full width"], enumMinimal: ["精简页面（minimal）", "Minimal"],
+  };
+  const ENGLISH_DESCRIPTIONS = {
+    "article-title": "The current article's heading, usually above its body. Different from the website title.",
+    backlinks: "Lists notes that link to the current article to help readers find related content.",
+    breadcrumbs: "Shows the current folder path and lets readers return to parent folders.",
+    comments: "Displays a comment area below an article. A separate comment service must be configured.",
+    "content-meta": "Shows article metadata such as dates and estimated reading time.", darkmode: "Lets readers switch between the website's light and dark themes.",
+    explorer: "A tree of notes and folders for navigating the website.", footer: "Copyright information and links at the bottom of a page.",
+    graph: "Nodes and links show relationships between the current note and other notes.",
+    "note-properties": "Displays tags, aliases, descriptions and other note properties. Disabling also disables its transformer.",
+    "page-title": "The name of the entire website, usually linking to its home page. Not the current article's title. Set in configuration.pageTitle; this editor does not change it.",
+    "reader-mode": "Lets readers switch to a more focused reading interface.", "recent-notes": "Shows recently updated notes so readers can find new content.",
+    search: "Searches notes and articles within the website.", spacer: "Adds empty space to the layout; it displays no article content.",
+    "stacked-pages": "Supports browsing multiple note pages in a stacked interface.",
+    "table-of-contents": "Lists headings in the current article for quick navigation. Disabling also disables its table-of-contents transformer.",
+    "tag-list": "Displays the current article's tags and links to their tag pages.",
+  };
+  const ZH_PLUGIN_NAMES = {
+    "created-modified-date": "创建与修改日期", "syntax-highlighting": "代码高亮", "obsidian-flavored-markdown": "Obsidian 语法", "github-flavored-markdown": "GitHub Markdown 语法", "crawl-links": "链接关联分析", description: "文章摘要", latex: "数学公式", citations: "引用文献", "hard-line-breaks": "硬换行", "ox-hugo": "Hugo 内容兼容", roam: "Roam 内容兼容", "quartz-fonts": "网站字体", core: "主题核心", "remove-draft": "过滤草稿", "explicit-publish": "显式发布", "alias-redirects": "别名重定向", "content-index": "内容索引", favicon: "网站图标", "og-image": "分享封面", cname: "自定义域名", "canvas-page": "画布页面", "content-page": "文章页面", "folder-page": "文件夹页面", "tag-page": "标签页面", "bases-page": "数据库页面", "unlisted-pages": "未列出页面", "encrypted-pages": "加密页面", "obsidian-plugin-excalidraw": "Excalidraw 绘图支持",
+  };
+  const EN_PLUGIN_NAMES = {
+    "created-modified-date": "Created and modified dates", "syntax-highlighting": "Syntax highlighting", "obsidian-flavored-markdown": "Obsidian Markdown", "github-flavored-markdown": "GitHub Markdown", "crawl-links": "Link analysis", description: "Article descriptions", latex: "Math formulas", citations: "Citations", "hard-line-breaks": "Hard line breaks", "ox-hugo": "Hugo compatibility", roam: "Roam compatibility", "quartz-fonts": "Website fonts", core: "Theme core", "remove-draft": "Filter drafts", "explicit-publish": "Explicit publishing", "alias-redirects": "Alias redirects", "content-index": "Content index", favicon: "Site icon", "og-image": "Social sharing image", cname: "Custom domain", "canvas-page": "Canvas pages", "content-page": "Content pages", "folder-page": "Folder pages", "tag-page": "Tag pages", "bases-page": "Bases pages", "unlisted-pages": "Unlisted pages", "encrypted-pages": "Encrypted pages", "obsidian-plugin-excalidraw": "Excalidraw support",
+  };
+  const SLOT_KEYS = { header: "slotHeader", left: "slotLeft", beforeBody: "slotBefore", afterBody: "slotAfter", right: "slotRight", footer: "slotFooter", tray: "slotTray" };
+  const PAGE_KEYS = { "404": "page404", content: "pageContent", folder: "pageFolder", tag: "pageTag", canvas: "pageCanvas", bases: "pageBases" };
+  const ENUM_KEYS = { all: "enumAll", "mobile-only": "enumMobile", "desktop-only": "enumDesktop", start: "enumStart", end: "enumEnd", center: "enumCenter", stretch: "enumStretch", between: "enumBetween", around: "enumAround", row: "enumRow", "row-reverse": "enumRowReverse", column: "enumColumn", "column-reverse": "enumColumnReverse", nowrap: "enumNoWrap", wrap: "enumWrap", "wrap-reverse": "enumWrapReverse", default: "enumDefault", "full-width": "enumFullWidth", minimal: "enumMinimal" };
+  const DRAFT_COPY = {
+    editView: ["编辑布局", "Edit layout"], effectView: ["效果预览", "Draft preview"],
+    frameMapping: ["对应 Quartz 5：左右侧栏夹住正文列；header → beforeBody → 正文 → afterBody 位于中列，footer 在中列下方。", "Quartz 5 mapping: sidebars flank the center column; header → beforeBody → body → afterBody stay in the center, with footer below it."],
+    draftIntro: ["当前草稿的离线效果：无需生成或保存，编辑后立即更新。区域、顺序、分组和显示规则对应已核对的 Quartz 5 默认框架。", "Offline view of the current draft: updates immediately without generating or saving YAML. Regions, ordering, groups and display rules follow the inspected Quartz 5 frames."],
+    draftLimit: ["文章、网站标题与组件内容使用示例数据；不是运行中的 Quartz。主题、字体、插件 options、自定义组件与服务未执行，因此不承诺像素级复刻。搜索、评论、图谱等仅为外观示例。", "Article, website title and component contents use sample data, not a running Quartz instance. Themes, fonts, plugin options, custom components and services are not executed, so this is not a pixel-exact build. Search, comments and graph are visual samples only."],
+    draftFit: ["适应可用宽度", "Fit available width"],
+    draftViewport: ["模拟视口", "Simulated viewport"], draftDesktop: ["桌面 · 1440px", "Desktop · 1440px"], draftTablet: ["平板 · 1000px", "Tablet · 1000px"], draftMobile: ["手机 · 390px", "Mobile · 390px"],
+    draftPage: ["预览页面类型", "Preview page type"], draftContext: ["示例文章条件", "Sample article context"], draftIndex: ["当前是首页", "This is the index page"], draftTags: ["有标签", "Has tags"], draftBacklinks: ["有反向链接", "Has backlinks"], draftToc: ["有文章目录", "Has table of contents"],
+    draftRegions: ["标注布局区域", "Show slot labels"], draftTemplate: ["当前模板：{template} · {width}px", "Frame: {template} · {width}px"],
+    draftHidden: ["未显示的组件：{items}", "Components not shown: {items}"], draftReasonTemplate: ["模板不渲染该槽位", "slot omitted by template"], draftReasonCleared: ["页面类型清空", "slot cleared for page type"], draftReasonExcluded: ["页面类型排除", "excluded for page type"], draftReasonDisplay: ["设备显示限制", "device display rule"], draftReasonCondition: ["示例条件不满足", "sample condition is false"], draftReasonResponsive: ["Quartz 窄屏右栏规则", "Quartz narrow right-sidebar rule"],
+    draftUnknown: ["自定义条件 {items} 按未注册时的 Quartz 行为显示；若你的站点注册了它们，实际结果取决于自定义代码。", "Custom conditions {items} display as Quartz does when unregistered. Registered predicates on your site may behave differently."],
+    draftUnknownFrame: ["模板 {name} 未内置，暂用 default 示意；自定义框架需在站点验证。", "Template {name} is not built in; default is shown as a fallback. Verify custom frames in your site."],
+    draftLegend: ["组件与配置一一对应", "One-to-one component mapping"], draftLegendHint: ["每个组件标明配置短名与槽位。点击名称回到该卡片编辑。示例正文不是一个可移动插件。", "Each component is identified by its configuration short name and slot. Select a name to return to its editor card. The sample article is not a movable plugin."],
+    draftSampleSite: ["我的数字花园", "My digital garden"], draftSampleArticle: ["从一篇笔记开始", "Start with a note"], draftSampleFolder: ["笔记", "Notes"], draftSampleTag: ["标签：学习", "Tag: learning"], draftSampleCanvas: ["灵感画布", "Idea canvas"], draftSampleBases: ["笔记数据库", "Notes database"], draftSample404: ["页面未找到", "Page not found"],
+    draftArticleIntro: ["这是用来感受布局的示例文章。调整组件位置后，回到效果预览就能看到新的布局。", "This sample article helps you judge the layout. Move a component, then return to this view to see the updated arrangement."],
+    draftArticleHeading: ["把信息放到合适的位置", "Put information where it belongs"], draftArticleText: ["左边是浏览入口，中间是内容，右边是文章关联信息。这里的文字、日期和链接都是示例，不会写入你的配置。", "Navigation sits on the left, content in the center and related information on the right. Text, dates and links here are examples and are never written to your configuration."],
+    draftSampleRelated: ["关联笔记", "Related note"], draftSampleWelcome: ["欢迎", "Welcome"], draftSampleSearch: ["搜索笔记…", "Search notes…"], draftSampleMeta: ["2026-10-22 · 阅读约 3 分钟", "Oct 22, 2026 · 3 min read"],
+    draftSampleProperty: ["描述：一份布局示例", "Description: a layout example"], draftSampleComment: ["评论内容将在你配置的服务中显示", "Comments appear through your configured service"], draftSampleFooter: ["使用 Quartz 构建 · 示例页脚链接", "Built with Quartz · Sample footer links"], draftGraph: ["笔记关联图谱示例", "Sample note graph"], draftSampleBadge: ["示例内容 · 草稿布局", "Sample content · Draft layout"],
+    draftAreaHeader: ["header · 中列页头", "header · Center header"], draftAreaBefore: ["beforeBody · 正文之前", "beforeBody · Before body"], draftAreaAfter: ["afterBody · 正文之后", "afterBody · After body"], draftAreaFooter: ["footer · 中列底部", "footer · Below center"], draftAreaLeft: ["left · 左侧栏 / 手机顶栏", "left · Sidebar / mobile top row"], draftAreaRight: ["right · 右侧栏 / 窄屏正文下方", "right · Sidebar / below content on narrow screens"],
+  };
+  Object.assign(COPY, DRAFT_COPY);
+  function draftSampleTitle() {
+    const keys = { content: "draftSampleArticle", folder: "draftSampleFolder", tag: "draftSampleTag", canvas: "draftSampleCanvas", bases: "draftSampleBases", "404": "draftSample404" };
+    return translate(keys[state.ui.draftContext.pageType]);
+  }
+  function renderDraftWidget(entry, position) {
+    const name = entryName(entry);
+    const text = key => esc(translate(key));
+    const title = esc(draftSampleTitle());
+    let content;
+    switch (entry.shortName) {
+      case "page-title": content = `<div class="effect-site-title">${text("draftSampleSite")}</div>`; break;
+      case "article-title": content = `<h1 class="effect-article-title">${title}</h1>`; break;
+      case "search": content = `<div class="effect-search"><span aria-hidden="true">⌕</span> ${text("draftSampleSearch")}</div>`; break;
+      case "darkmode": content = `<div class="effect-icon" aria-label="${esc(name)}">◐</div>`; break;
+      case "reader-mode": content = `<div class="effect-icon" aria-label="${esc(name)}">▤</div>`; break;
+      case "spacer": content = '<div class="effect-spacer" aria-hidden="true"></div>'; break;
+      case "explorer": content = `<div class="effect-widget-heading">${esc(name)} <span aria-hidden="true">⌄</span></div><div class="effect-tree">⌂ ${text("draftSampleWelcome")}<br>⌄ ${text("draftSampleFolder")}<div>▸ ${title}<br>▸ ${text("draftSampleRelated")}</div></div>`; break;
+      case "graph": content = `<div class="effect-widget-heading">${esc(name)}</div><svg class="effect-graph" viewBox="0 0 240 150" role="img" aria-label="${text("draftGraph")}"><path d="M120 76 46 35M120 76 203 34M120 76 195 125M120 76 42 124M46 35 42 124M203 34 195 125"/><circle cx="120" cy="76" r="11"/><circle cx="46" cy="35" r="6"/><circle cx="203" cy="34" r="7"/><circle cx="195" cy="125" r="5"/><circle cx="42" cy="124" r="7"/></svg>`; break;
+      case "table-of-contents": content = `<div class="effect-widget-heading">${esc(name)}</div><ol class="effect-list"><li>${title}</li><li>${text("draftArticleHeading")}</li></ol>`; break;
+      case "backlinks": content = `<div class="effect-widget-heading">${esc(name)}</div><div class="effect-link">${text("draftSampleRelated")}</div><div class="effect-link">${text("draftSampleWelcome")}</div>`; break;
+      case "breadcrumbs": content = `<div class="effect-breadcrumb">${text("draftSampleSite")} › ${text("draftSampleFolder")} › ${title}</div>`; break;
+      case "content-meta": content = `<div class="effect-meta">${text("draftSampleMeta")}</div>`; break;
+      case "note-properties": content = `<div class="effect-properties">${text("draftSampleProperty")}</div>`; break;
+      case "tag-list": content = `<div class="effect-tags"><span># quartz</span><span># ${state.ui.locale === "zh-CN" ? "学习" : "learning"}</span></div>`; break;
+      case "comments": content = `<div class="effect-widget-heading">${esc(name)}</div><div class="effect-comment">${text("draftSampleComment")}</div>`; break;
+      case "recent-notes": content = `<div class="effect-widget-heading">${esc(name)}</div><div class="effect-link">${title}</div><div class="effect-meta">${text("draftSampleMeta")}</div>`; break;
+      case "stacked-pages": content = `<div class="effect-stack"><div>${text("draftSampleRelated")}</div><div>${title}</div></div>`; break;
+      case "footer": content = `<div class="effect-footer">${text("draftSampleFooter")}</div>`; break;
+      default: content = `<div class="effect-widget-heading">${esc(name)}</div>`;
+    }
+    return `<div class="effect-component effect-${esc(entry.shortName)}" data-effect-entry="${entry.id}" data-effect-source="${esc(entry.shortName)}" data-effect-position="${esc(position)}" title="${esc(`${name} · ${entry.shortName} → ${position}`)}">${content}</div>`;
+  }
+  function renderDraftSlot(model, position) {
+    if (!model.frameSlots.includes(position)) return "";
+    const keys = { header: "draftAreaHeader", beforeBody: "draftAreaBefore", afterBody: "draftAreaAfter", footer: "draftAreaFooter", left: "draftAreaLeft", right: "draftAreaRight" };
+    const contents = model.slots[position].map(item => item.kind === "entry" ? renderDraftWidget(item.entry, position) : `<div class="effect-group" data-effect-group="${esc(item.name)}">${item.members.map(entry => `<div class="effect-group-member" data-effect-member="${entry.id}">${renderDraftWidget(entry, position)}</div>`).join("")}</div>`).join("");
+    return `<div class="effect-slot effect-slot-${position}" data-effect-slot="${position}"><div class="effect-slot-label">${esc(translate(keys[position]))}</div>${contents}</div>`;
+  }
+  function renderDraftEffect() {
+    const context = state.ui.draftContext;
+    const model = core.resolveDraftLayout(state, context);
+    const slots = position => renderDraftSlot(model, position);
+    const reasonKeys = { template: "draftReasonTemplate", cleared: "draftReasonCleared", excluded: "draftReasonExcluded", display: "draftReasonDisplay", condition: "draftReasonCondition", responsive: "draftReasonResponsive" };
+    const visibleEntries = Object.entries(model.slots).flatMap(([position, items]) => items.flatMap(item => (item.kind === "entry" ? [item.entry] : item.members).map(entry => ({ entry, position }))));
+    const hidden = model.hidden.map(item => `${entryName(entryById(item.id))} (${translate(reasonKeys[item.reason])})`).join("; ");
+    const sampleArticle = `<article class="effect-body" data-effect-body><p class="effect-meta">${esc(translate("draftSampleBadge"))}</p><p>${esc(translate("draftArticleIntro"))}</p><h2>${esc(translate("draftArticleHeading"))}</h2><p>${esc(translate("draftArticleText"))}</p><blockquote>${esc(translate("draftArticleIntro"))}</blockquote><div class="effect-code">plugins:<br>&nbsp; - source: quartz/component<br>&nbsp;&nbsp; enabled: true</div></article>`;
+    return `<section id="draft-effect"${state.ui.boardView === "effect" ? "" : " hidden"} aria-label="${esc(translate("effectView"))}"><p class="notice">${esc(translate("draftIntro"))}</p><div class="effect-controls">${selectField("draft-width", translate("draftViewport"), [["1440", translate("draftDesktop")], ["1000", translate("draftTablet")], ["390", translate("draftMobile")]], context.width)}${selectField("draft-page-type", translate("draftPage"), core.PAGE_TYPES.map(type => [type, `${translate(PAGE_KEYS[type])} · ${type}`]), context.pageType)}<label class="check-line" for="draft-fit"><input id="draft-fit" type="checkbox"${context.fit ? " checked" : ""}>${esc(translate("draftFit"))}</label><label class="check-line" for="draft-regions"><input id="draft-regions" type="checkbox"${context.regions ? " checked" : ""}>${esc(translate("draftRegions"))}</label></div><fieldset class="effect-context"><legend>${esc(translate("draftContext"))}</legend>${[["isIndex", "draftIndex"], ["hasTags", "draftTags"], ["hasBacklinks", "draftBacklinks"], ["hasToc", "draftToc"]].map(([key, label]) => `<label class="check-line" for="draft-${key}"><input id="draft-${key}" type="checkbox" data-draft-condition="${key}"${context[key] ? " checked" : ""}>${esc(translate(label))}</label>`).join("")}</fieldset><p class="small">${esc(translate("draftTemplate", { template: model.requestedTemplate, width: context.width }))}</p><p class="small">${esc(translate("draftLimit"))}</p>${model.unsupportedTemplate ? `<p class="notice warning">${esc(translate("draftUnknownFrame", { name: model.requestedTemplate }))}</p>` : ""}${model.unknownConditions.length ? `<p class="notice warning">${esc(translate("draftUnknown", { items: model.unknownConditions.join(", ") }))}</p>` : ""}<div class="effect-scroll" tabindex="0" aria-label="${esc(translate("effectView"))}"><div class="effect-page" data-effect-width="${context.width}" data-effect-viewport="${model.viewport}" data-effect-template="${model.template}" data-effect-regions="${context.regions}">${slots("left")}<div class="effect-center">${slots("header")}${slots("beforeBody")}${sampleArticle}${model.template !== "minimal" ? '<hr>' : ""}${slots("afterBody")}</div>${slots("right")}${slots("footer")}</div></div>${hidden ? `<p id="draft-hidden" class="notice">${esc(translate("draftHidden", { items: hidden }))}</p>` : ""}<details class="effect-mapping"><summary>${esc(translate("draftLegend"))}</summary><p class="small">${esc(translate("draftLegendHint"))}</p><div>${visibleEntries.map(({ entry, position }) => `<button type="button" data-action="draft-edit" data-id="${entry.id}">${esc(entryName(entry))} · ${esc(entry.shortName)} → ${esc(position)}</button>`).join("")}</div></details></section>`;
+  }
+  function applyDraftStyles() {
+    const surface = document.querySelector(".effect-page");
+    if (!surface) return;
+    applyDraftScale();
+    const setCss = (element, property, value) => {
+      if (typeof value === "string" && !/[;{}]|url\s*\(|var\s*\(/i.test(value) && CSS.supports(property, value)) element.style.setProperty(property, value);
+    };
+    for (const groupNode of surface.querySelectorAll("[data-effect-group]")) {
+      const config = state.groups[groupNode.dataset.effectGroup] ?? {};
+      setCss(groupNode, "flex-direction", config.direction ?? "row");
+      setCss(groupNode, "flex-wrap", config.wrap ?? "nowrap");
+      setCss(groupNode, "gap", config.gap ?? "1rem");
+      for (const node of groupNode.querySelectorAll(":scope > [data-effect-member]")) {
+        const options = entryById(node.dataset.effectMember).layout?.groupOptions ?? {};
+        node.style.flexGrow = options.grow ? "1" : "0";
+        node.style.flexShrink = (options.shrink ?? true) ? "1" : "0";
+        node.style.order = String(options.order ?? 0);
+        setCss(node, "flex-basis", options.basis ?? "auto");
+        setCss(node, "align-self", options.align ?? "center");
+        setCss(node, "justify-self", options.justify ?? "center");
+      }
+    }
+  }
+  function applyDraftScale() {
+    const surface = document.querySelector(".effect-page");
+    if (!surface) return;
+    const availableWidth = Math.max(1, surface.parentElement.clientWidth - 20);
+    surface.style.zoom = String(state.ui.draftContext.fit ? Math.min(1, availableWidth / state.ui.draftContext.width) : 1);
+  }
+
   let core;
   let state = {
     entries: [], groups: {}, byPageType: {}, selected: null, dirty: false, renumber: true, source: null,
-    ui: { theme: "system", ready: false, inputMode: null, pasteText: "", file: null, pending: null, loading: false, pageType: "content", editGroup: "", newGroupName: "", drafts: {}, pluginsOpen: false, diffOpen: false, fullDiff: false, output: null, modalOpen: false, dragId: null, returnFocus: null, message: "正在准备编辑器…", tone: "neutral", error: "", warning: "" }
+    ui: { locale: "zh-CN", theme: "system", ready: false, guideOpen: true, boardView: "edit", draftContext: { width: 1440, pageType: "content", isIndex: false, hasTags: true, hasBacklinks: true, hasToc: true, regions: false, fit: true }, inputMode: null, pasteText: "", pending: null, loading: false, pageType: "content", editGroup: "", newGroupName: "", drafts: {}, pluginsOpen: false, diffOpen: false, output: null, modalOpen: false, dragId: null, message: { key: "preparing", params: {} }, tone: "neutral", error: null, warning: null, copyMessage: null }
   };
   const esc = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object || {}, key);
   const put = (object, key, value) => Object.defineProperty(object, key, { value, writable: true, configurable: true, enumerable: true });
-  const entryName = entry => entry.catalog?.displayName || entry.shortName || sourceText(entry.source);
+  const translate = (key, params = {}) => {
+    if (!Object.hasOwn(COPY, key)) throw new Error(`Missing translation: ${key}`);
+    return COPY[key][state.ui.locale === "zh-CN" ? 0 : 1].replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? ""));
+  };
+  const slotName = position => SLOT_KEYS[position] ? translate(SLOT_KEYS[position]) : String(position);
   const sourceText = source => typeof source === "string" ? source : JSON.stringify(source ?? "");
+  const entryEnglishName = entry => entry.catalog?.displayName || EN_PLUGIN_NAMES[entry.shortName] || entry.shortName;
+  const entryName = entry => state.ui.locale === "zh-CN" ? entry.catalog?.chineseName || ZH_PLUGIN_NAMES[entry.shortName] || entry.shortName : entryEnglishName(entry);
+  const entryDescription = entry => state.ui.locale === "zh-CN" ? entry.catalog?.description || "" : ENGLISH_DESCRIPTIONS[entry.shortName] || "";
   const entryById = id => state.entries.find(entry => entry.id === Number(id));
   const canPlace = entry => Boolean(entry.catalog?.defaultPosition);
   const invalidPosition = entry => entry.enabled && canPlace(entry) && !core.POSITIONS.includes(core.effectiveLayout(entry).position);
-  const isDual = entry => ["table-of-contents", "note-properties"].includes(entry.shortName) || (entry.catalog?.category?.includes("transformer") && entry.catalog?.category?.includes("component"));
+  const isDual = entry => ["table-of-contents", "note-properties"].includes(entry.shortName);
   const groupNames = () => [...new Set([...Object.keys(state.groups), ...state.entries.map(entry => entry.layout?.group).filter(Boolean)])];
   const draft = (id, fallback) => own(state.ui.drafts, id) ? state.ui.drafts[id] : fallback;
   const selectedOption = (value, current) => String(value ?? "") === String(current ?? "") ? " selected" : "";
-  const options = (values, current) => values.map(value => { const record = typeof value === "string" ? [value, value] : value; return `<option value="${esc(record[0])}"${selectedOption(record[0], current)}>${esc(record[1])}</option>`; }).join("");
-  const slotOptions = current => options([...core.POSITIONS.map(position => [position, `${slotLabels[position]} · ${position}`]), ["tray", "托盘（禁用）"]], current);
-  function setMessage(message, tone = "neutral") { state.ui.message = String(message); state.ui.tone = tone; }
-  function reportError(error) { state.ui.error = error?.message || String(error); setMessage(state.ui.error, "error"); render(); }
+  const options = (values, current) => values.map(value => {
+    const record = typeof value === "string" ? [value, ENUM_KEYS[value] ? translate(ENUM_KEYS[value]) : value] : value;
+    return `<option value="${esc(record[0])}"${selectedOption(record[0], current)}>${esc(record[1])}</option>`;
+  }).join("");
+  const slotOptions = current => options([...core.POSITIONS.map(position => [position, `${slotName(position)} · ${position}`]), ["tray", slotName("tray")]], current);
+  const message = (key, params = {}) => ({ key, params });
+  function setMessage(key, params = {}, tone = "neutral") { state.ui.message = message(key, params); state.ui.tone = tone; }
+  function warningText() {
+    if (state.ui.warning === null) return "";
+    return translate("transformerWarning", { name: entryName(entryById(state.ui.warning)) });
+  }
+  function messageText(record) {
+    if (!record) return "";
+    const params = { ...record.params };
+    if (params.entryId !== undefined) { params.name = entryName(entryById(params.entryId)); delete params.entryId; }
+    if (record.key === "moved") {
+      params.slot = slotName(params.position);
+      params.index = params.index >= 0 ? translate("moveIndex", { index: params.index + 1 }) : "";
+    }
+    return translate(record.key, params);
+  }
+  const ERROR_COPY = [
+    ["不支持的键名", "Unsupported key name"], ["配置必须是文本", "Configuration must be text"], ["不支持单独的 CR 换行，请使用 LF 或 CRLF", "Standalone CR line endings are unsupported; use LF or CRLF"],
+    ["不支持跨行引号或引号未闭合", "Multiline or unclosed quotes are unsupported"], ["缺少字段值", "Missing field value"], ["需要字符串", "A string is required"], ["双引号字符串格式不支持", "Unsupported double-quoted string syntax"], ["单引号字符串格式不支持", "Unsupported single-quoted string syntax"], ["列表未闭合", "Unclosed list"], ["数值必须有限", "Numbers must be finite"],
+    ["此处不支持锚点、标签、复杂 flow mapping 或多行标量", "Anchors, tags, complex flow mappings and multiline scalars are unsupported here"], ["无法识别的 YAML 键或缩进", "Unrecognized YAML key or indentation"], ["缩进不能包含 Tab", "Indentation cannot contain tabs"], ["顶层段须使用缩进块，不能是 flow mapping、锚点或别名", "Top-level sections require indented blocks, not flow mappings, anchors or aliases"], ["需要 configuration 和非空 plugins 段", "A configuration section and a nonempty plugins section are required"],
+    ["不支持的缩进层级", "Unsupported indentation level"], ["缩进应为两个空格一层", "Use two spaces per indentation level"], ["列表和映射不能混用", "Lists and mappings cannot be mixed"], ["映射和列表不能混用", "Mappings and lists cannot be mixed"], ["插件条目应使用两个空格加 '- source:'", "Plugin entries must start with two spaces followed by '- source:'"], ["plugins 段不能为空", "The plugins section cannot be empty"], ["插件必须以字符串 source 开头", "A plugin entry must start with a string source"], ["只支持字符串 source，不支持对象 source", "Only string sources are supported, not object sources"], ["不支持的插件属性缩进", "Unsupported plugin property indentation"], ["属性缺少父键", "Property is missing a parent key"],
+    ["enabled 必须是 true 或 false", "enabled must be true or false"], ["enabled 不能包含子块", "enabled cannot contain a child block"], ["order 必须是数值", "order must be a number"], ["layout 须为映射", "layout must be a mapping"], ["显式布局必须包含 position 和 priority", "Explicit layouts require position and priority"], ["position 不是六个合法槽位之一", "position must be one of the six valid slots"], ["priority 必须是有限数值", "priority must be a finite number"], ["display 值无效", "Invalid display value"], ["groupOptions 须为映射", "groupOptions must be a mapping"], ["basis 必须为字符串", "basis must be a string"], ["order 必须为有限数值", "order must be a finite number"], ["align 值无效", "Invalid align value"], ["justify 值无效", "Invalid justify value"],
+    ["groups 和 byPageType 必须为映射", "groups and byPageType must be mappings"], ["组配置必须为映射", "Group configuration must be a mapping"], ["组 priority 必须为有限数值", "Group priority must be a finite number"], ["组 direction 值无效", "Invalid group direction"], ["组 wrap 值无效", "Invalid group wrap"], ["组 gap 必须为字符串", "Group gap must be a string"], ["页面类型配置必须为映射", "Page-type configuration must be a mapping"], ["template 必须为字符串", "template must be a string"], ["exclude 必须为短名字符串列表", "exclude must be a list of short-name strings"], ["positions 必须为映射", "positions must be a mapping"], ["byPageType.positions 只支持合法槽位的空数组，不能添加组件", "byPageType.positions only supports empty arrays for valid slots, not added components"],
+    ["值不能直接写为 YAML 标量", "This value cannot be emitted as a YAML scalar"], ["enabled 必须是布尔值", "enabled must be a boolean"], ["配置过大，无法安全计算行级 diff", "Configuration is too large to safely calculate a line diff"], ["组件不存在", "Component not found"], ["enabled 必须为布尔值", "enabled must be a boolean"], ["只有目录内的布局组件可以移动", "Only catalog layout components can be moved"], ["目标槽位无效", "Invalid target slot"], ["只能将启用组件上移或下移一位", "Only enabled components can move up or down one position"],
+  ];
+  const ERROR_PATTERNS = [
+    [/^不支持的顶层键 (.+)$/u, name => `Unsupported top-level key ${name}`], [/^重复顶层键 (.+)$/u, name => `Duplicate top-level key ${name}`], [/^重复键 (.+)$/u, name => `Duplicate key ${name}`], [/^缺少 (.+) 的值或子块$/u, name => `Missing value or child block for ${name}`], [/^不支持的插件属性 (.+)$/u, name => `Unsupported plugin property ${name}`], [/^重复插件属性 (.+)$/u, name => `Duplicate plugin property ${name}`], [/^不支持的 layout 字段 (.+)$/u, name => `Unsupported layout field ${name}`], [/^(.+) 必须是字符串$/u, name => `${name} must be a string`], [/^不支持的 groupOptions\.(.+)$/u, name => `Unsupported groupOptions.${name}`], [/^(.+) 必须为布尔值$/u, name => `${name} must be a boolean`], [/^不支持的顶层 layout\.(.+)$/u, name => `Unsupported top-level layout.${name}`], [/^不支持的组字段 (.+)$/u, name => `Unsupported group field ${name}`], [/^不支持的页面类型字段 (.+)$/u, name => `Unsupported page-type field ${name}`],
+  ];
+  function errorText(error) {
+    if (error.key) return messageText(error);
+    const raw = error.reason || error.message || String(error);
+    let reason = raw;
+    if (state.ui.locale === "en") {
+      const exact = ERROR_COPY.find(item => item[0] === raw);
+      if (exact) reason = exact[1];
+      else {
+        for (const [pattern, formatter] of ERROR_PATTERNS) {
+          const match = raw.match(pattern);
+          if (match) { reason = formatter(match[1]); break; }
+        }
+      }
+    }
+    return error.line === undefined ? reason : translate("errorLine", { line: error.line + 1, reason });
+  }
+  function reportError(error) { state.ui.error = error; state.ui.tone = "error"; render(); }
   function field(id, title, control, hint = "") { return `<label class="field" for="${esc(id)}"><span>${esc(title)}</span>${control}${hint ? `<small>${esc(hint)}</small>` : ""}</label>`; }
   function selectField(id, title, values, current, attributes = "", hint = "") { return field(id, title, `<select id="${esc(id)}" ${attributes}>${options(values, current)}</select>`, hint); }
   function textField(id, title, current, attributes = "", hint = "") { return field(id, title, `<input id="${esc(id)}" value="${esc(draft(id, current ?? ""))}" ${attributes}>`, hint); }
@@ -1099,16 +1479,26 @@ const QuartzEditor = (() => {
     target.focus({ preventScroll: true });
     if (Number.isInteger(snapshot.start)) { try { target.setSelectionRange(snapshot.start, snapshot.end); } catch {} }
   }
+  function renderShell() {
+    document.documentElement.lang = state.ui.locale;
+    document.title = translate("title");
+    for (const element of document.querySelectorAll("[data-i18n]")) element.textContent = translate(element.dataset.i18n);
+    for (const element of document.querySelectorAll("[data-i18n-aria]")) element.setAttribute("aria-label", translate(element.dataset.i18nAria));
+    document.getElementById("language-select").value = state.ui.locale;
+  }
   function sourceLabel() {
-    if (!state.source) return "尚未载入配置";
-    if (state.source.kind === "default") return "Quartz 默认配置（内置快照）";
-    if (state.source.kind === "paste") return "粘贴的配置";
-    return state.source.name || "本地配置文件";
+    if (!state.source) return translate("noSource");
+    if (state.source.kind === "default") return translate("defaultSource");
+    if (state.source.kind === "paste") return translate("pasteSource");
+    return state.source.name || translate("fileSource");
+  }
+  function renderGuide() {
+    document.getElementById("guide-panel").innerHTML = `<details id="beginner-guide"${state.ui.guideOpen ? " open" : ""}><summary>${esc(translate("guideTitle"))}</summary><div class="guide-steps">${[1, 2, 3, 4].map(step => `<section class="guide-step"><h3>${esc(translate(`step${step}Title`))}</h3><p>${esc(translate(`step${step}`))}</p></section>`).join("")}</div>${["guideTitles", "guideStates", "guideSafety"].map(key => `<p class="guide-note">${esc(translate(key))}</p>`).join("")}</details>`;
   }
   function renderInput() {
     const loadedAt = state.source?.loadedAt;
-    const timestamp = loadedAt ? new Date(loadedAt).toLocaleString("zh-CN", { hour12: false }) : "";
-    document.getElementById("input-panel").innerHTML = `<div class="source-row"><div class="source-meta"><span class="pill">配置来源</span><span class="source-name">${esc(sourceLabel())}</span>${timestamp ? `<span class="small">载入于 ${esc(timestamp)}</span>` : ""}<span class="pill ${state.dirty ? "warn" : "neutral"}">${state.dirty ? "有未生成的改动" : "已同步编辑状态"}</span></div><div class="source-actions"><button id="load-default" data-action="default" type="button"${state.ui.loading ? " disabled" : ""}>从默认配置开始</button><button id="choose-file" data-action="file" type="button"${state.ui.loading ? " disabled" : ""}>选择 YAML 文件</button><input class="sr-only" tabindex="-1" type="file" id="config-file" accept=".yaml,.yml,text/yaml,text/plain" aria-label="选择配置文件"><button id="open-paste" data-action="paste" type="button">粘贴配置</button></div></div>${state.ui.loading ? '<p class="notice">正在读取文件，请稍候…</p>' : ""}${state.ui.pending ? '<div id="dirty-confirmation" class="notice warning" role="group" aria-label="切换来源确认"><strong>当前有未生成的改动。</strong>载入另一份配置会丢弃这些改动，是否继续？<div class="toolbar"><button id="confirm-load" data-action="confirm-load" type="button">丢弃改动并载入</button><button id="cancel-load" data-action="cancel-load" type="button">保留当前编辑</button></div></div>' : ""}${state.ui.error ? `<p id="input-error" class="notice error">${esc(state.ui.error)}</p>` : ""}${state.ui.inputMode === "paste" ? `<div class="paste-area"><label for="paste-config"><strong>粘贴完整的 quartz.config.yaml</strong></label><p class="small">内容只在当前页面内存中处理，不上传、不自动保存。</p><textarea id="paste-config" spellcheck="false" placeholder="在这里粘贴配置内容…">${esc(state.ui.pasteText)}</textarea><div class="toolbar"><button id="load-paste" class="primary" data-action="load-paste" type="button">载入粘贴内容</button><button id="close-paste" data-action="close-paste" type="button">收起</button></div></div>` : ""}`;
+    const timestamp = loadedAt ? new Date(loadedAt).toLocaleString(state.ui.locale, { hour12: false }) : "";
+    document.getElementById("input-panel").innerHTML = `<div class="source-row"><div class="source-meta"><span class="pill">${esc(translate("sourceLabel"))}</span><span class="source-name">${esc(sourceLabel())}</span>${timestamp ? `<span class="small">${esc(translate("loadedAt", { time: timestamp }))}</span>` : ""}<span class="pill ${state.dirty ? "warn" : "neutral"}">${esc(translate(state.dirty ? "dirty" : "synced"))}</span></div><div class="source-actions"><button id="load-default" data-action="default" type="button"${state.ui.loading ? " disabled" : ""}>${esc(translate("loadDefault"))}</button><button id="choose-file" data-action="file" type="button"${state.ui.loading ? " disabled" : ""}>${esc(translate("chooseFile"))}</button><input class="sr-only" tabindex="-1" type="file" id="config-file" accept=".yaml,.yml,text/yaml,text/plain" aria-label="${esc(translate("fileLabel"))}"><button id="open-paste" data-action="paste" type="button">${esc(translate("paste"))}</button></div></div>${state.ui.loading ? `<p class="notice">${esc(translate("loading"))}</p>` : ""}${state.ui.pending ? `<div id="dirty-confirmation" class="notice warning" role="group" aria-label="${esc(translate("confirmLabel"))}"><strong>${esc(translate("confirmText"))}</strong><div class="toolbar"><button id="confirm-load" data-action="confirm-load" type="button">${esc(translate("confirmLoad"))}</button><button id="cancel-load" data-action="cancel-load" type="button">${esc(translate("cancelLoad"))}</button></div></div>` : ""}${state.ui.error ? `<p id="input-error" class="notice error">${esc(errorText(state.ui.error))}</p>` : ""}${state.ui.inputMode === "paste" ? `<div class="paste-area"><label for="paste-config"><strong>${esc(translate("pasteTitle"))}</strong></label><p class="small">${esc(translate("pasteHint"))}</p><textarea id="paste-config" spellcheck="false" placeholder="${esc(translate("pastePlaceholder"))}">${esc(state.ui.pasteText)}</textarea><div class="toolbar"><button id="load-paste" class="primary" data-action="load-paste" type="button">${esc(translate("loadPaste"))}</button><button id="close-paste" data-action="close-paste" type="button">${esc(translate("closePaste"))}</button></div></div>` : ""}`;
   }
   function cardContext(entry) {
     if (!entry.enabled || invalidPosition(entry)) return { position: "tray", group: "", index: -1, count: 0 };
@@ -1124,87 +1514,95 @@ const QuartzEditor = (() => {
     const context = cardContext(entry);
     const implicit = entry.enabled && !entry.layout;
     const selected = state.selected === entry.id;
-    return `<article class="card${implicit ? " implicit" : ""}${!entry.enabled ? " disabled" : ""}${selected ? " selected" : ""}" draggable="true" tabindex="0" role="group" aria-label="${esc(name)} 组件" data-entry-id="${esc(entry.id)}" data-focus="card-${esc(entry.id)}"><div class="card-main"><span class="drag-grip" aria-hidden="true">⠿</span><div class="card-label"><button class="card-name" type="button" data-action="select" data-id="${esc(entry.id)}" data-focus="select-${esc(entry.id)}" aria-label="编辑 ${esc(name)}" aria-pressed="${selected}">${esc(name)}</button><div class="card-badges"><span class="pill neutral">优先级 ${esc(layout.priority)}</span>${implicit ? '<span class="pill">隐式布局</span>' : ""}${invalidPosition(entry) ? `<span class="pill warn">无效槽位 ${esc(layout.position)}：运行时会忽略</span>` : ""}${!entry.enabled ? '<span class="pill neutral">已禁用</span>' : ""}${selected ? '<span class="pill">正在编辑</span>' : ""}${isDual(entry) ? '<span class="pill neutral">组件 + 转换器</span>' : ""}</div></div></div><div class="card-controls"><button type="button" data-action="move" data-id="${esc(entry.id)}" data-direction="-1" data-focus="up-${esc(entry.id)}" aria-label="${esc(name)} 上移"${context.index <= 0 ? " disabled" : ""}>↑</button><button type="button" data-action="move" data-id="${esc(entry.id)}" data-direction="1" data-focus="down-${esc(entry.id)}" aria-label="${esc(name)} 下移"${context.index < 0 || context.index >= context.count - 1 ? " disabled" : ""}>↓</button><select data-control="card-position" data-id="${esc(entry.id)}" data-focus="position-${esc(entry.id)}" aria-label="移动 ${esc(name)} 到槽位">${slotOptions(entry.enabled ? layout.position : "tray")}</select></div><select class="card-group-select" data-control="card-group" data-id="${esc(entry.id)}" data-focus="group-${esc(entry.id)}" aria-label="移动 ${esc(name)} 到分组"${!entry.enabled ? " disabled" : ""}>${options([["", "不分组（移出组）"], ...groupNames().map(name => [name, `组 · ${name}`])], layout.group || "")}</select></article>`;
+    return `<article class="card${implicit ? " implicit" : ""}${!entry.enabled ? " disabled" : ""}${selected ? " selected" : ""}" draggable="true" tabindex="0" role="group" aria-label="${esc(translate("componentLabel", { name }))}" data-entry-id="${entry.id}" data-focus="card-${entry.id}"><div class="card-main"><span class="drag-grip" aria-hidden="true">⠿</span><div class="card-label"><button class="card-name" type="button" data-action="select" data-id="${entry.id}" data-focus="select-${entry.id}" aria-label="${esc(translate("editComponent", { name }))}" aria-pressed="${selected}">${esc(name)}</button>${state.ui.locale === "zh-CN" ? `<span class="component-english">${esc(entryEnglishName(entry))}</span>` : ""}<p class="component-description">${esc(entryDescription(entry))}</p><div class="card-badges"><span class="pill neutral">${esc(translate("priorityValue", { value: layout.priority }))}</span>${implicit ? `<span class="pill">${esc(translate("implicit"))}</span>` : ""}${invalidPosition(entry) ? `<span class="pill warn">${esc(translate("invalidSlot", { value: layout.position }))}</span>` : ""}${!entry.enabled ? `<span class="pill neutral">${esc(translate("disabled"))}</span>` : ""}${selected ? `<span class="pill">${esc(translate("selected"))}</span>` : ""}${isDual(entry) ? `<span class="pill neutral">${esc(translate("dual"))}</span>` : ""}</div></div></div><div class="card-controls"><button type="button" data-action="move" data-id="${entry.id}" data-direction="-1" data-focus="up-${entry.id}" aria-label="${esc(translate("moveUp", { name }))}"${context.index <= 0 ? " disabled" : ""}>↑</button><button type="button" data-action="move" data-id="${entry.id}" data-direction="1" data-focus="down-${entry.id}" aria-label="${esc(translate("moveDown", { name }))}"${context.index < 0 || context.index >= context.count - 1 ? " disabled" : ""}>↓</button><select data-control="card-position" data-id="${entry.id}" data-focus="position-${entry.id}" aria-label="${esc(translate("moveSlot", { name }))}">${slotOptions(context.position)}</select></div><select class="card-group-select" data-control="card-group" data-id="${entry.id}" data-focus="group-${entry.id}" aria-label="${esc(translate("moveGroup", { name }))}"${!entry.enabled ? " disabled" : ""}>${options([["", translate("noGroup")], ...groupNames().map(group => [group, translate("groupOption", { name: group })])], layout.group || "")}</select></article>`;
   }
-  function insertZone(position, index, group = "") { return `<div class="drop-insert" aria-hidden="true" data-drop-position="${esc(position)}" data-drop-index="${esc(index)}"${group ? ` data-drop-group="${esc(group)}"` : ""}></div>`; }
+  function insertZone(position, index, group = "") { return `<div class="drop-insert" aria-hidden="true" data-drop-position="${esc(position)}" data-drop-index="${index}"${group ? ` data-drop-group="${esc(group)}"` : ""}></div>`; }
   function renderSlot(position) {
     const items = core.slotEntries(state, position);
     const count = items.reduce((total, item) => total + (item.kind === "entry" ? 1 : item.members.length), 0);
     const content = items.map((item, index) => {
       if (item.kind === "entry") return insertZone(position, index) + renderCard(item.entry);
-      const config = own(state.groups, item.name) ? state.groups[item.name] : {};
-      return `${insertZone(position, index)}<div class="group-container" role="group" aria-label="分组 ${esc(item.name)}"><div class="group-head"><span class="group-name">▦ ${esc(item.name)}</span><button data-action="edit-group" data-name="${esc(item.name)}" data-focus="edit-group-${esc(position)}-${esc(item.name)}" type="button" aria-label="编辑组 ${esc(item.name)}">编辑组</button></div><p class="group-meta">组优先级 ${esc(item.priority)} · ${esc(config.direction || "row")}</p><div class="group-members" data-drop-position="${esc(position)}" data-drop-group="${esc(item.name)}" data-drop-index="${esc(item.members.length)}">${item.members.map((entry, memberIndex) => insertZone(position, memberIndex, item.name) + renderCard(entry)).join("")}${insertZone(position, item.members.length, item.name)}</div></div>`;
+      const config = state.groups[item.name] || {};
+      const direction = config.direction || "row";
+      return `${insertZone(position, index)}<div class="group-container" role="group" aria-label="${esc(translate("groupLabel", { name: item.name }))}"><div class="group-head"><span class="group-name">▦ ${esc(item.name)}</span><button data-action="edit-group" data-name="${esc(item.name)}" data-focus="edit-group-${esc(position)}-${esc(item.name)}" type="button" aria-label="${esc(translate("editGroupLabel", { name: item.name }))}">${esc(translate("editGroup"))}</button></div><p class="group-meta">${esc(translate("groupMeta", { priority: item.priority, direction: ENUM_KEYS[direction] ? translate(ENUM_KEYS[direction]) : direction }))}</p><div class="group-members" data-drop-position="${esc(position)}" data-drop-group="${esc(item.name)}" data-drop-index="${item.members.length}">${item.members.map((entry, memberIndex) => insertZone(position, memberIndex, item.name) + renderCard(entry)).join("")}${insertZone(position, item.members.length, item.name)}</div></div>`;
     }).join("");
-    return `<section id="slot-${esc(position)}" class="slot slot-${esc(position)}" role="group" aria-label="${esc(slotLabels[position])} ${esc(position)} 槽位"><div class="slot-title"><span>${esc(slotLabels[position])} <span class="pill neutral">${esc(count)}</span></span><span class="slot-code mono">${esc(position)}</span></div><div class="slot-body" data-drop-position="${esc(position)}" data-drop-index="${esc(items.length)}">${content}${insertZone(position, items.length)}${items.length ? "" : '<p class="empty-slot">拖入组件，或使用卡片的槽位菜单</p>'}</div></section>`;
+    return `<section id="slot-${esc(position)}" class="slot slot-${esc(position)}" role="group" aria-label="${esc(translate("slotLabel", { name: slotName(position), position }))}"><div class="slot-title"><span>${esc(slotName(position))} <span class="pill neutral">${count}</span></span><span class="slot-code mono">${esc(position)}</span></div><div class="slot-body" data-drop-position="${esc(position)}" data-drop-index="${items.length}">${content}${insertZone(position, items.length)}${items.length ? "" : `<p class="empty-slot">${esc(translate("emptySlot"))}</p>`}</div></section>`;
   }
   function renderBoard() {
     const activeCount = state.entries.filter(entry => entry.enabled && canPlace(entry)).length;
-    document.getElementById("layout-board").innerHTML = `<div class="board-heading"><div><p class="eyebrow">YOUR PAGE, REARRANGED</p><h2>页面布局 <span class="pill neutral">${esc(activeCount)} 个组件</span></h2><p class="board-info"><span>拖动卡片调整位置 · 也可使用 ↑ ↓ 和菜单</span><span><i class="legend-dash" aria-hidden="true"></i>虚线 = 使用插件默认布局</span></p></div><label class="check-line" for="renumber-priorities"><input id="renumber-priorities" type="checkbox"${state.renumber ? " checked" : ""}>自动重排优先级（步长 10）</label></div><div class="frame">${renderSlot("header")}${renderSlot("left")}<div class="frame-center">${renderSlot("beforeBody")}<section class="page-body" aria-label="正文 pageBody，不可放置组件"><p class="eyebrow">PAGE BODY · 固定正文</p><h3>留一点空间，给内容。</h3><p class="small">这里是文章本身。<br>把导航放在两侧，让信息自然流动。</p><div class="text-line" aria-hidden="true"></div><div class="text-line" aria-hidden="true"></div><div class="text-line short" aria-hidden="true"></div><span class="body-badge">不可放置组件 · 仅为布局示意</span></section>${renderSlot("afterBody")}</div>${renderSlot("right")}${renderSlot("footer")}</div>`;
+    document.getElementById("layout-board").innerHTML = `<div class="board-heading"><div><p class="eyebrow">${esc(translate("boardKicker"))}</p><h2>${esc(translate("boardTitle"))} <span class="pill neutral">${esc(translate("count", { count: activeCount }))}</span></h2><p class="board-info"><span>${esc(translate("boardHint"))}</span><span><i class="legend-dash" aria-hidden="true"></i>${esc(translate("implicitLegend"))}</span></p></div><label class="check-line" for="renumber-priorities"><input id="renumber-priorities" type="checkbox"${state.renumber ? " checked" : ""}>${esc(translate("renumber"))}</label></div><p class="small">${esc(translate("frameMapping"))}</p><div class="board-modes" role="group" aria-label="${esc(translate("boardTitle"))}"><button id="board-edit" type="button" data-action="board-edit" aria-pressed="${state.ui.boardView === "edit"}">${esc(translate("editView"))}</button><button id="board-effect" type="button" data-action="board-effect" aria-pressed="${state.ui.boardView === "effect"}">${esc(translate("effectView"))}</button></div><div class="frame"${state.ui.boardView === "edit" ? "" : " hidden"}>${renderSlot("left")}<div class="frame-center">${renderSlot("header")}${renderSlot("beforeBody")}<section class="page-body" aria-label="${esc(translate("bodyLabel"))}"><p class="eyebrow">${esc(translate("bodyKicker"))}</p><h3>${esc(translate("bodyTitle"))}</h3><p class="small">${esc(translate("bodyText"))}</p><div class="text-line" aria-hidden="true"></div><div class="text-line" aria-hidden="true"></div><div class="text-line short" aria-hidden="true"></div><span class="body-badge">${esc(translate("bodyBadge"))}</span></section>${renderSlot("afterBody")}</div>${renderSlot("right")}${renderSlot("footer")}</div>${renderDraftEffect()}`;
     const tray = state.entries.filter(entry => canPlace(entry) && (!entry.enabled || invalidPosition(entry)));
-    document.getElementById("tray-panel").innerHTML = `<div class="panel-head"><h2>组件托盘</h2><span class="pill neutral">${esc(tray.length)}</span></div><div class="panel-body"><p class="panel-intro">暂时不用的组件放在这里。移入槽位即可启用；移回托盘会禁用插件。</p><div id="component-tray" class="tray-zone" role="group" aria-label="已禁用组件托盘" data-drop-position="tray">${tray.map(entry => renderCard(entry)).join('<div class="drop-insert" aria-hidden="true"></div>') || '<p class="empty-slot">没有禁用的布局组件<br>可将卡片拖到这里</p>'}</div>${state.ui.warning ? `<p id="transformer-warning" class="notice warning">${esc(state.ui.warning)}</p>` : ""}</div>`;
+    document.getElementById("tray-panel").innerHTML = `<div class="panel-head"><h2>${esc(translate("trayTitle"))}</h2><span class="pill neutral">${tray.length}</span></div><div class="panel-body"><p class="panel-intro">${esc(translate("trayIntro"))}</p><div id="component-tray" class="tray-zone" role="group" aria-label="${esc(translate("trayLabel"))}" data-drop-position="tray">${tray.map(entry => renderCard(entry)).join('<div class="drop-insert" aria-hidden="true"></div>') || `<p class="empty-slot">${esc(translate("emptyTray"))}</p>`}</div>${state.ui.warning !== null ? `<p id="transformer-warning" class="notice warning">${esc(warningText())}</p>` : ""}</div>`;
     const otherEntries = state.entries.filter(entry => !canPlace(entry));
-    const pluginsPanel = document.getElementById("plugins-panel");
-    pluginsPanel.open = state.ui.pluginsOpen;
-    pluginsPanel.innerHTML = `<summary>非布局插件 <span class="pill neutral">${esc(otherEntries.length)}</span></summary><div class="panel-body"><p class="panel-intro">不提供已知布局位置的插件保留原样，仅可切换启用状态。</p><div class="plugin-list">${otherEntries.map(entry => `<div class="plugin-row"><label for="plugin-enabled-${esc(entry.id)}"><input id="plugin-enabled-${esc(entry.id)}" type="checkbox" data-control="plugin-enabled" data-id="${esc(entry.id)}"${entry.enabled ? " checked" : ""} aria-label="启用 ${esc(entryName(entry))}"><span><span class="plugin-name">${esc(entryName(entry))}</span><span class="plugin-source">${esc(sourceText(entry.source))}</span></span></label></div>`).join("") || '<p class="small">没有非布局插件。</p>'}</div></div>`;
+    const panel = document.getElementById("plugins-panel");
+    panel.open = state.ui.pluginsOpen;
+    panel.innerHTML = `<summary>${esc(translate("pluginsTitle"))} <span class="pill neutral">${otherEntries.length}</span></summary><div class="panel-body"><p class="panel-intro">${esc(translate("pluginsIntro"))}</p><div class="plugin-list">${otherEntries.map(entry => `<div class="plugin-row"><label for="plugin-enabled-${entry.id}"><input id="plugin-enabled-${entry.id}" type="checkbox" data-control="plugin-enabled" data-id="${entry.id}"${entry.enabled ? " checked" : ""} aria-label="${esc(translate("enablePlugin", { name: entryName(entry) }))}"><span><span class="plugin-name">${esc(entryName(entry))}</span><span class="plugin-source">${esc(sourceText(entry.source))}</span></span></label></div>`).join("") || `<p class="small">${esc(translate("noPlugins"))}</p>`}</div></div>`;
   }
   function renderProperties() {
     const entry = state.selected === null ? null : entryById(state.selected);
     const panel = document.getElementById("properties-panel");
-    if (!entry) { panel.innerHTML = '<div class="panel-head"><h2>组件属性</h2></div><div class="panel-body"><p class="small">选中一张卡片，调整显示条件、位置和分组。</p></div>'; return; }
+    if (!entry) { panel.innerHTML = `<div class="panel-head"><h2>${esc(translate("properties"))}</h2></div><div class="panel-body"><p class="small">${esc(translate("selectHint"))}</p></div>`; return; }
     const layout = core.effectiveLayout(entry);
     const attributes = key => `data-property="${key}"`;
-    const unset = [["", "未设置"]];
-    const tri = [...unset, ["true", "true"], ["false", "false"]];
-    panel.innerHTML = `<div class="panel-head"><h2>${esc(entryName(entry))}</h2></div><div class="panel-body"><p class="small">${esc(entry.source)}</p><label class="check-line" for="property-enabled"><input id="property-enabled" type="checkbox" data-property="enabled"${entry.enabled ? " checked" : ""}>启用组件</label>${selectField("property-position", "位置", core.POSITIONS.map(position => [position, slotLabels[position]]), layout.position, attributes("position"))}${textField("property-priority", "优先级", layout.priority, `${attributes("priority")} type="number" step="any"`)}${selectField("property-display", "显示范围", [...unset, "all", "mobile-only", "desktop-only"], layout.display, attributes("display"))}${textField("property-condition", "显示条件", layout.condition, `${attributes("condition")} list="condition-presets"`, "自定义条件需在 Quartz 注册；未知条件会 warn 并无条件显示。")}<datalist id="condition-presets"><option value="not-index"><option value="has-tags"><option value="has-backlinks"><option value="has-toc"></datalist>${textField("property-group", "分组", layout.group, attributes("group"), "空值表示移出分组；新名称会创建默认组。")}<fieldset><legend>groupOptions · 组内布局</legend>${["grow", "shrink"].map(key => selectField(`property-${key}`, key, tri, layout.groupOptions?.[key] === undefined ? "" : String(layout.groupOptions[key]), attributes(`groupOptions.${key}`))).join("")}${textField("property-basis", "basis", layout.groupOptions?.basis, attributes("groupOptions.basis"))}${textField("property-order", "order", layout.groupOptions?.order, `${attributes("groupOptions.order")} type="number" step="any"`)}${selectField("property-align", "align", [...unset, "start", "end", "center", "stretch"], layout.groupOptions?.align, attributes("groupOptions.align"))}${selectField("property-justify", "justify", [...unset, "start", "end", "center", "between", "around"], layout.groupOptions?.justify, attributes("groupOptions.justify"))}</fieldset>${isDual(entry) ? '<p class="notice warning">禁用此插件也会关闭其转换器，不只是隐藏组件。</p>' : ""}</div>`;
+    const unset = [["", translate("unset")]];
+    const tri = [...unset, ["true", translate("yes")], ["false", translate("no")]];
+    panel.innerHTML = `<div class="panel-head"><h2>${esc(entryName(entry))}</h2></div><div class="panel-body">${state.ui.locale === "zh-CN" ? `<p class="component-english">${esc(entryEnglishName(entry))}</p>` : ""}<p class="notice">${esc(entryDescription(entry))}</p><p class="small">${esc(translate("pluginSource", { source: entry.source }))}</p><label class="check-line" for="property-enabled"><input id="property-enabled" type="checkbox" data-property="enabled"${entry.enabled ? " checked" : ""}>${esc(translate("enableComponent"))}</label>${selectField("property-position", translate("position"), core.POSITIONS.map(position => [position, slotName(position)]), layout.position, attributes("position"))}${textField("property-priority", translate("priority"), layout.priority, `${attributes("priority")} type="number" step="any"`, translate("priorityHint"))}${selectField("property-display", translate("display"), [...unset, "all", "mobile-only", "desktop-only"], layout.display, attributes("display"))}${textField("property-condition", translate("condition"), layout.condition, `${attributes("condition")} list="condition-presets"`, translate("conditionHint"))}<datalist id="condition-presets">${[["not-index", "notIndex"], ["has-tags", "hasTags"], ["has-backlinks", "hasBacklinks"], ["has-toc", "hasToc"]].map(([value, key]) => `<option value="${value}" label="${esc(translate(key))}"></option>`).join("")}</datalist>${textField("property-group", translate("group"), layout.group, attributes("group"), translate("groupHint"))}<fieldset><legend>${esc(translate("groupOptions"))}</legend>${["grow", "shrink"].map(key => selectField(`property-${key}`, translate(key), tri, layout.groupOptions?.[key] === undefined ? "" : String(layout.groupOptions[key]), attributes(`groupOptions.${key}`))).join("")}${textField("property-basis", translate("basis"), layout.groupOptions?.basis, attributes("groupOptions.basis"))}${textField("property-order", translate("order"), layout.groupOptions?.order, `${attributes("groupOptions.order")} type="number" step="any"`)}${selectField("property-align", translate("align"), [...unset, "start", "end", "center", "stretch"], layout.groupOptions?.align, attributes("groupOptions.align"))}${selectField("property-justify", translate("justify"), [...unset, "start", "end", "center", "between", "around"], layout.groupOptions?.justify, attributes("groupOptions.justify"))}</fieldset>${isDual(entry) ? `<p class="notice warning">${esc(translate("dualWarning"))}</p>` : ""}</div>`;
   }
   function renderGroups() {
-    const names = groupNames();
     const name = state.ui.editGroup;
     const group = state.groups[name] || {};
-    document.getElementById("groups-panel").innerHTML = `<div class="panel-head"><h2>分组容器</h2></div><div class="panel-body">${selectField("edit-group", "选择分组", [["", "选择或创建分组"], ...names], name)}${textField("new-group-name", "新分组名称", state.ui.newGroupName)}<button type="button" data-action="add-group">创建分组</button>${name ? `${textField("group-priority", "组优先级", group.priority, 'data-group-property="priority" type="number" step="any"')}${selectField("group-direction", "方向", [["", "默认 row"], "row", "row-reverse", "column", "column-reverse"], group.direction, 'data-group-property="direction"')}${selectField("group-wrap", "换行", [["", "未设置"], "nowrap", "wrap", "wrap-reverse"], group.wrap, 'data-group-property="wrap"')}${textField("group-gap", "间距", group.gap, 'data-group-property="gap"')}` : '<p class="small">卡片的分组菜单与拖入组容器使用同一移动逻辑。</p>'}</div>`;
+    document.getElementById("groups-panel").innerHTML = `<div class="panel-head"><h2>${esc(translate("groupsTitle"))}</h2></div><div class="panel-body">${selectField("edit-group", translate("chooseGroup"), [["", translate("groupPlaceholder")], ...groupNames().map(groupName => [groupName, groupName])], name)}${textField("new-group-name", translate("newGroup"), state.ui.newGroupName)}<button type="button" data-action="add-group">${esc(translate("createGroup"))}</button>${name ? `${textField("group-priority", translate("groupPriority"), group.priority, 'data-group-property="priority" type="number" step="any"')}${selectField("group-direction", translate("direction"), [["", translate("defaultRow")], "row", "row-reverse", "column", "column-reverse"], group.direction, 'data-group-property="direction"')}${selectField("group-wrap", translate("wrapLabel"), [["", translate("unset")], "nowrap", "wrap", "wrap-reverse"], group.wrap, 'data-group-property="wrap"')}${textField("group-gap", translate("gap"), group.gap, 'data-group-property="gap"')}` : `<p class="small">${esc(translate("groupIntro"))}</p>`}</div>`;
   }
   function renderPages() {
     const type = state.ui.pageType;
     const page = state.byPageType[type] || {};
-    document.getElementById("pages-panel").innerHTML = `<div class="panel-head"><h2>页面类型覆盖</h2></div><div class="panel-body"><p class="notice">此处不支持添加或重排组件，只能清空和排除。</p>${selectField("page-type", "页面类型", core.PAGE_TYPES.map(type => [type, `${pageLabels[type]} · ${type}`]), type)}${selectField("page-template", "模板", [["", "未设置"], "default", "full-width", "minimal"], page.template)}${textField("page-exclude", "排除组件短名", (page.exclude || []).join(", "), "", "使用逗号分隔，例如 reader-mode, graph。")}<fieldset><legend>清空槽位</legend>${core.POSITIONS.map(position => `<label class="check-line" for="clear-${esc(position)}"><input id="clear-${esc(position)}" type="checkbox" data-clear-position="${esc(position)}"${own(page.positions, position) ? " checked" : ""}>清空 ${esc(position)}</label>`).join("")}</fieldset>${page.template === "minimal" ? '<p id="minimal-warning" class="notice warning">minimal 模板只保留正文与页脚，header、left、right、afterBody 四个槽位不会显示。</p>' : ""}</div>`;
+    document.getElementById("pages-panel").innerHTML = `<div class="panel-head"><h2>${esc(translate("pagesTitle"))}</h2></div><div class="panel-body"><p class="notice">${esc(translate("pagesIntro"))}</p>${selectField("page-type", translate("pageType"), core.PAGE_TYPES.map(type => [type, `${translate(PAGE_KEYS[type])} · ${type}`]), type)}${selectField("page-template", translate("template"), [["", translate("unset")], "default", "full-width", "minimal"], page.template)}${textField("page-exclude", translate("exclude"), (page.exclude || []).join(", "), "", translate("excludeHint"))}<fieldset><legend>${esc(translate("clearSlots"))}</legend>${core.POSITIONS.map(position => `<label class="check-line" for="clear-${position}"><input id="clear-${position}" type="checkbox" data-clear-position="${position}"${own(page.positions, position) ? " checked" : ""}>${esc(translate("clearSlot", { name: slotName(position), position }))}</label>`).join("")}</fieldset>${page.template === "minimal" ? `<p id="minimal-warning" class="notice warning">${esc(translate("minimalWarning"))}</p>` : ""}</div>`;
   }
   function renderModal() {
     const host = document.getElementById("modal-host");
     if (!state.ui.modalOpen) { host.innerHTML = ""; return; }
     const output = state.ui.output;
-    const changed = output.diff.filter(line => line.type !== "same");
-    host.innerHTML = `<dialog id="output-dialog" aria-labelledby="output-title"><div class="modal-head"><h2 id="output-title">生成的 quartz.config.yaml</h2><button type="button" data-action="close-output" aria-label="关闭输出">关闭</button></div><div class="modal-body"><p class="small">仅供你手动复制粘贴；不会写入站点。${esc(changed.length)} 行变动。</p><label for="output-yaml">完整配置</label><textarea id="output-yaml" class="output-text" readonly spellcheck="false">${esc(output.text)}</textarea><details class="diff-details" id="output-diff"${state.ui.diffOpen ? " open" : ""}><summary>行级 diff（${esc(changed.length)} 行）</summary><pre class="diff-lines">${changed.length ? output.diff.map(line => `<span class="diff-line ${esc(line.type)}">${line.type === "add" ? "+" : line.type === "remove" ? "−" : " "} ${esc(line.text)}</span>`).join("") : '<span class="diff-line">没有改动</span>'}</pre></details></div><div class="modal-footer"><span class="small" id="copy-status">${esc(state.ui.copyMessage || "LF 换行 · 无 BOM · 保留末尾换行状态")}</span><button class="primary" type="button" data-action="copy">复制完整配置</button></div></dialog>`;
+    const count = output.diff.filter(line => line.type !== "same").length;
+    host.innerHTML = `<dialog id="output-dialog" aria-labelledby="output-title"><div class="modal-head"><h2 id="output-title">${esc(translate("outputTitle"))}</h2><label class="modal-language" for="output-language"><span>${esc(translate("language"))}</span><select id="output-language" data-control="locale"><option value="zh-CN"${selectedOption("zh-CN", state.ui.locale)}>中文</option><option value="en"${selectedOption("en", state.ui.locale)}>English</option></select></label><button type="button" data-action="close-output" aria-label="${esc(translate("closeOutput"))}">${esc(translate("close"))}</button></div><div class="modal-body"><p class="small">${esc(translate("outputIntro", { count }))}</p><label for="output-yaml">${esc(translate("completeConfig"))}</label><textarea id="output-yaml" class="output-text" readonly spellcheck="false">${esc(output.text)}</textarea><details class="diff-details" id="output-diff"${state.ui.diffOpen ? " open" : ""}><summary>${esc(translate("diff", { count }))}</summary><pre class="diff-lines">${count ? output.diff.map(line => `<span class="diff-line ${esc(line.type)}">${line.type === "add" ? "+" : line.type === "remove" ? "−" : " "} ${esc(line.text)}</span>`).join("") : `<span class="diff-line">${esc(translate("noChanges"))}</span>`}</pre></details></div><div class="modal-footer"><span class="small" id="copy-status">${esc(state.ui.copyMessage ? messageText(state.ui.copyMessage) : translate("outputEncoding"))}</span><button class="primary" type="button" data-action="copy">${esc(translate("copy"))}</button></div></dialog>`;
     document.getElementById("output-dialog").showModal();
   }
   function render() {
+    if (state.ui.pointerActive) { state.ui.renderPending = true; return; }
+    state.ui.renderPending = false;
     const focus = focusSnapshot();
-    renderInput();
-    if (core && state.ui.ready) { renderBoard(); renderProperties(); renderGroups(); renderPages(); }
+    renderShell(); renderGuide(); renderInput();
+    if (core && state.ui.ready) { renderBoard(); applyDraftStyles(); renderProperties(); renderGroups(); renderPages(); }
     renderModal();
     const status = document.getElementById("status-text");
-    status.textContent = state.ui.message;
-    status.dataset.tone = state.ui.tone;
+    status.textContent = state.ui.error ? errorText(state.ui.error) : messageText(state.ui.message);
+    status.dataset.tone = state.ui.error ? "error" : state.ui.tone;
     document.getElementById("generate-config").disabled = !state.ui.ready;
     restoreFocus(focus);
+  }
+  function setLocale(value) {
+    if (!["zh-CN", "en"].includes(value)) return;
+    state.ui.locale = value;
+    try { localStorage.setItem("quartz-editor-locale", value); } catch {}
+    render();
   }
   function loadConfig(text, source) {
     try {
       const loaded = core.load(text, { ...source, loadedAt: new Date().toISOString() });
-      const ui = { ...state.ui, ready: true, inputMode: null, pending: null, loading: false, drafts: {}, warning: "", error: "", modalOpen: false };
+      const ui = { ...state.ui, ready: true, inputMode: null, pending: null, loading: false, drafts: {}, warning: null, error: null, modalOpen: false };
       state = { ...loaded, ui };
-      setMessage(`已载入 ${state.entries.length} 个插件，配置仅在内存中处理。`);
-      render();
+      setMessage("loaded", { count: state.entries.length }); render();
     } catch (error) { state.ui.loading = false; reportError(error); }
   }
   function requestLoad(text, source) {
-    if (state.dirty) { state.ui.pending = { text, source }; setMessage("切换配置前，请确认是否丢弃改动。"); render(); }
+    if (state.dirty) { state.ui.pending = { text, source }; setMessage("sourceConfirm"); render(); }
     else loadConfig(text, source);
   }
   function defaultText() { return document.getElementById("default-config").textContent.replace(/^\n/, ""); }
   function announceMove(entry) {
     const context = cardContext(entry);
-    if (!entry.enabled && isDual(entry)) state.ui.warning = `${entryName(entry)} 已禁用：转换器也被关闭，会影响目录或笔记属性处理。`;
-    setMessage(`${entryName(entry)} 已移至 ${slotLabels[context.position] || context.position}${context.index >= 0 ? ` 第 ${context.index + 1} 位` : ""}。`);
+    state.ui.error = null;
+    if (!entry.enabled && isDual(entry)) state.ui.warning = entry.id;
+    setMessage("moved", { entryId: entry.id, position: context.position, index: context.index });
   }
   function moveEntry(id, position, index, group) {
     core.place(state, Number(id), position, index, group || undefined);
@@ -1214,7 +1612,7 @@ const QuartzEditor = (() => {
     const entry = entryById(state.selected);
     if (key === "enabled") {
       core.updateEntry(state, entry.id, { enabled: value });
-      if (!value && isDual(entry)) state.ui.warning = `${entryName(entry)} 已禁用，转换器也会连带关闭。`;
+      if (!value && isDual(entry)) state.ui.warning = entry.id;
     } else if (key === "position") { moveEntry(entry.id, value); return; }
     else if (key === "group") { moveEntry(entry.id, core.effectiveLayout(entry).position, undefined, value); return; }
     else {
@@ -1229,7 +1627,7 @@ const QuartzEditor = (() => {
       else layout[key] = key === "priority" ? Number(value) : value;
       core.updateEntry(state, entry.id, { layout });
     }
-    state.ui.drafts = {}; setMessage(`${entryName(entry)} 属性已更新。`); render();
+    state.ui.drafts = {}; state.ui.error = null; setMessage("propertyUpdated", { entryId: entry.id }); render();
   }
   async function copyOutput() {
     const text = state.ui.output.text;
@@ -1237,13 +1635,15 @@ const QuartzEditor = (() => {
     try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); copied = true; } } catch {}
     if (!copied) {
       const output = document.getElementById("output-yaml");
+      if (!output) return;
       output.focus(); output.select();
       try { copied = document.execCommand("copy"); } catch {}
     }
-    state.ui.copyMessage = copied ? "已复制，可粘贴到你的配置文件。" : "自动复制不可用：配置已全选，请按 Ctrl+C。";
-    document.getElementById("copy-status").textContent = state.ui.copyMessage;
-    setMessage(state.ui.copyMessage);
-    document.getElementById("status-text").textContent = state.ui.message;
+    state.ui.copyMessage = message(copied ? "copied" : "copyFallback");
+    setMessage(copied ? "copied" : "copyFallback");
+    const copyStatus = document.getElementById("copy-status");
+    if (copyStatus) copyStatus.textContent = messageText(state.ui.copyMessage);
+    document.getElementById("status-text").textContent = messageText(state.ui.message);
   }
   function applyTheme(theme) {
     state.ui.theme = theme;
@@ -1251,6 +1651,13 @@ const QuartzEditor = (() => {
     else document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("quartz-editor-theme", theme); } catch {}
   }
+  document.addEventListener("pointerdown", () => { state.ui.pointerActive = true; });
+  function endPointerInteraction() {
+    state.ui.pointerActive = false;
+    if (state.ui.renderPending) setTimeout(() => { if (state.ui.renderPending && !state.ui.pointerActive) render(); }, 0);
+  }
+  document.addEventListener("pointerup", endPointerInteraction);
+  document.addEventListener("pointercancel", endPointerInteraction);
   document.addEventListener("click", event => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
@@ -1260,6 +1667,8 @@ const QuartzEditor = (() => {
         const dark = state.ui.theme === "dark" || (state.ui.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
         applyTheme(dark ? "light" : "dark"); return;
       }
+      if (action === "board-edit" || action === "board-effect") { state.ui.boardView = action === "board-edit" ? "edit" : "effect"; render(); return; }
+      if (action === "draft-edit") { state.selected = Number(button.dataset.id); state.ui.boardView = "edit"; render(); document.querySelector(`[data-focus="select-${state.selected}"]`)?.focus(); return; }
       if (action === "select") { state.selected = Number(button.dataset.id); state.ui.drafts = {}; render(); }
       else if (action === "move") {
         const entry = core.move(state, Number(button.dataset.id), Number(button.dataset.direction));
@@ -1268,21 +1677,21 @@ const QuartzEditor = (() => {
       else if (action === "edit-group") { state.ui.editGroup = button.dataset.name; render(); document.getElementById("edit-group").focus(); }
       else if (action === "add-group") {
         const name = state.ui.newGroupName.trim();
-        if (!name || ["__proto__", "constructor", "prototype"].includes(name)) throw new Error("请输入有效的分组名称。");
+        if (!name || ["__proto__", "constructor", "prototype"].includes(name)) throw message("invalidGroup");
         if (!own(state.groups, name)) put(state.groups, name, {});
-        state.ui.editGroup = name; state.ui.newGroupName = ""; state.ui.drafts = {}; state.dirty = true; render();
+        state.ui.editGroup = name; state.ui.newGroupName = ""; state.ui.drafts = {}; state.dirty = true; state.ui.error = null; render();
       }
-      else if (action === "default") requestLoad(defaultText(), { kind: "default", name: "Quartz 默认配置（内置快照）" });
+      else if (action === "default") requestLoad(defaultText(), { kind: "default", name: "" });
       else if (action === "file") document.getElementById("config-file").click();
       else if (action === "paste") { state.ui.inputMode = "paste"; render(); document.getElementById("paste-config").focus(); }
       else if (action === "close-paste") { state.ui.inputMode = null; render(); }
-      else if (action === "load-paste") requestLoad(state.ui.pasteText, { kind: "paste", name: "粘贴" });
+      else if (action === "load-paste") requestLoad(state.ui.pasteText, { kind: "paste", name: "" });
       else if (action === "confirm-load") { const pending = state.ui.pending; loadConfig(pending.text, pending.source); }
       else if (action === "cancel-load") { state.ui.pending = null; render(); }
       else if (action === "generate") {
         const text = core.generate(state);
         state.ui.output = { text, diff: core.diffLines(core.originalText(state), text) };
-        state.dirty = false; state.ui.modalOpen = true; state.ui.copyMessage = ""; setMessage("已生成配置；请先核对 diff 再手动粘贴。"); render();
+        state.dirty = false; state.ui.modalOpen = true; state.ui.copyMessage = null; state.ui.error = null; setMessage("generated"); render();
       }
       else if (action === "close-output") { state.ui.modalOpen = false; render(); document.getElementById("generate-config").focus(); }
       else if (action === "copy") void copyOutput();
@@ -1297,6 +1706,12 @@ const QuartzEditor = (() => {
   document.addEventListener("change", async event => {
     const input = event.target;
     try {
+      if (input.id === "language-select" || input.dataset.control === "locale") { setLocale(input.value); return; }
+      if (input.id === "draft-width") { state.ui.draftContext.width = Number(input.value); render(); return; }
+      if (input.id === "draft-page-type") { state.ui.draftContext.pageType = input.value; render(); return; }
+      if (input.id === "draft-regions") { state.ui.draftContext.regions = input.checked; render(); return; }
+      if (input.id === "draft-fit") { state.ui.draftContext.fit = input.checked; render(); return; }
+      if (input.dataset.draftCondition) { state.ui.draftContext[input.dataset.draftCondition] = input.checked; render(); return; }
       if (input.id === "config-file") {
         const file = input.files[0];
         if (!file) return;
@@ -1307,7 +1722,7 @@ const QuartzEditor = (() => {
       else if (input.dataset.control === "card-position") moveEntry(input.dataset.id, input.value);
       else if (input.dataset.control === "card-group") moveEntry(input.dataset.id, core.effectiveLayout(entryById(input.dataset.id)).position, undefined, input.value);
       else if (input.dataset.control === "plugin-enabled") {
-        core.updateEntry(state, Number(input.dataset.id), { enabled: input.checked }); setMessage("插件启用状态已更新。"); render();
+        core.updateEntry(state, Number(input.dataset.id), { enabled: input.checked }); state.ui.error = null; setMessage("pluginUpdated"); render();
       }
       else if (input.dataset.property) mutateProperty(input.dataset.property, input.type === "checkbox" ? input.checked : input.value);
       else if (input.id === "edit-group") { state.ui.editGroup = input.value; state.ui.drafts = {}; render(); }
@@ -1376,16 +1791,21 @@ const QuartzEditor = (() => {
     try { moveEntry(state.ui.dragId, target.position, target.index, target.group); } catch (error) { reportError(error); }
     state.ui.dragId = null;
   });
-  document.addEventListener("dragend", () => { state.ui.dragId = null; document.querySelectorAll(".is-drop-target").forEach(element => element.classList.remove("is-drop-target")); });
+  document.addEventListener("dragend", () => { state.ui.dragId = null; endPointerInteraction(); document.querySelectorAll(".is-drop-target").forEach(element => element.classList.remove("is-drop-target")); });
   document.addEventListener("toggle", event => {
-    if (event.target.id === "plugins-panel") state.ui.pluginsOpen = event.target.open;
+    if (event.target.id === "beginner-guide") state.ui.guideOpen = event.target.open;
+    else if (event.target.id === "plugins-panel") state.ui.pluginsOpen = event.target.open;
     else if (event.target.id === "output-diff") state.ui.diffOpen = event.target.open;
   }, true);
+  window.addEventListener("resize", applyDraftScale);
   core = QuartzEditor;
   let theme = "system";
+  let locale = (navigator.language || "en").toLowerCase().startsWith("zh") ? "zh-CN" : "en";
   try { const stored = localStorage.getItem("quartz-editor-theme"); if (["system", "light", "dark"].includes(stored)) theme = stored; } catch {}
+  try { const stored = localStorage.getItem("quartz-editor-locale"); if (["zh-CN", "en"].includes(stored)) locale = stored; } catch {}
+  state.ui.locale = locale;
   applyTheme(theme);
-  loadConfig(defaultText(), { kind: "default", name: "Quartz 默认配置（内置快照）" });
+  loadConfig(defaultText(), { kind: "default", name: "" });
 })();
 </script>
 </body>
