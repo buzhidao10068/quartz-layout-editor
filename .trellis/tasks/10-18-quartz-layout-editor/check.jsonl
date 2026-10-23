@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/frontend/single-file-html.md", "reason": "审查依据：Forbidden patterns 表格（innerHTML 未转义、从 DOM 读状态、鼠标专属交互、外部资源、ES module）与 Verification 四步手工验证清单"}
-{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "模板未填，仅用于确认无额外项目级质量要求；实际标准在 single-file-html.md"}

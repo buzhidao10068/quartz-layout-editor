@@ -17,3 +17,7 @@ desktop.ini
 /scratch/
 
 fixtures/local/
+
+# Local agent tooling
+/.trellis/
+/.claude/

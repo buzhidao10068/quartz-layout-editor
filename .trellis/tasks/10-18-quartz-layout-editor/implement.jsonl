@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/frontend/single-file-html.md", "reason": "本项目唯一适用的编码规范：零依赖 file:// 约束、script 组织顺序、state 纯渲染不变量、esc() 转义要求、禁止 ES module 与外部资源、拖拽必须有共用同一底层函数的键盘路径"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "说明为何 component/hook/state/type-safety 四份模板规范在本项目标记为 N/A，避免 sub-agent 按 React 形态写代码"}
-{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "拖拽与键盘两条交互路径必须复用 move()/place() 同一底层函数，这是 PRD R2.3 的硬要求"}
