@@ -9,6 +9,144 @@ const core = loadCore();
 const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const localPath = new URL('../fixtures/local/real-config.yaml', import.meta.url);
 const entryNamed = (state, name) => state.entries.find(entry => entry.shortName === name);
+
+test('multiple native Footer instances keep independent placement and round-trip without new plugin options', () => {
+  const state = core.load(defaultRaw);
+  state.renumber = false;
+  const original = entryNamed(state, 'footer');
+  const ids = [];
+  for (const position of core.POSITIONS) {
+    const entry = core.addFooter(state);
+    ids.push(entry.id);
+    assert.equal(entry.source, original.source);
+    core.updateFooterLinks(state, entry.id, [{ label: `About ${position}`, url: `/about#${position}` }]);
+    core.place(state, entry.id, position);
+  }
+  assert.equal(new Set(ids).size, 6);
+  const output = core.generate(state);
+  const loaded = core.load(output);
+  assert.equal(loaded.entries.length, state.entries.length);
+  assert.equal(core.generate(loaded), output);
+  for (const position of core.POSITIONS) {
+    assert.ok(loaded.entries.some(entry => entry.footerLinks?.[0]?.label === `About ${position}` && entry.layout.position === position));
+  }
+  const paths = independent(defaultRaw, output);
+  assert.deepEqual(paths, ['plugins']);
+  const originalLines = output.trimEnd().split('\n');
+  originalLines.splice(loaded.entries[45].span[0], loaded.entries[50].span[1] - loaded.entries[45].span[0] + 1);
+  assert.equal(originalLines.join('\n') + '\n', defaultRaw);
+  assert.doesNotMatch(output, /buttonStyle|custom-button|style:/);
+});
+
+test('new Footer append preserves all original text, composes with root patches and can be removed', () => {
+  const source = core.CATALOG.find(entry => entry.displayName === 'Footer').source;
+  for (const suffix of ['', '\n', '\n# trailing comment\n', '\nlayout:\n  groups: {}\n  byPageType: {}\n']) {
+    const raw = `configuration:\n  pageTitle: Test # untouched\nplugins:\n  - source: "${source}"\n    options:\n      opaque: 'leave unchanged'${suffix}`;
+    const state = core.load(raw);
+    const entry = core.addFooter(state);
+    const second = core.addFooter(state);
+    core.updateEntry(state, second.id, { enabled: false });
+    const output = core.generate(state);
+    assert.match(output, /opaque: 'leave unchanged'/);
+    assert.equal(core.load(output).entries.length, 3);
+    assert.equal(core.load(output).entries[2].enabled, false);
+    core.removeAddedFooter(state, second.id);
+    core.removeAddedFooter(state, entry.id);
+    assert.equal(core.generate(state), raw);
+    assert.throws(() => core.removeAddedFooter(state, 0));
+    core.addFooter(state);
+    core.updatePageType(state, 'content', { exclude: ['footer'] });
+    assert.equal(core.load(core.generate(state)).entries.length, 2);
+    independent(raw, core.generate(state));
+  }
+});
+
+test('native custom.scss styles are separate, target actual Footer markup and escape selector data', () => {
+  const state = core.load(defaultRaw);
+  const entry = core.addFooter(state);
+  const url = '/about?x="</style><script>&y=${danger}';
+  core.updateFooterLinks(state, entry.id, [{ label: 'About', url }]);
+  const yaml = core.generate(state);
+  for (const style of Object.keys(core.FOOTER_STYLES)) {
+    const css = core.footerStyles(state, { [url]: style });
+    assert.match(css, /footer > ul > li > a\[href=/);
+    assert.match(css, /var\(--secondary\)/);
+    assert.match(css, /:focus-visible/);
+    assert.doesNotMatch(css, /<|\$\{|display: none|undefined/);
+    assert.equal(core.generate(state), yaml);
+  }
+  assert.equal(core.footerStyles(state, { [url]: 'x; color:red', '/missing': 'pill' }), '');
+  assert.equal(core.footerStyles(state, {}), '');
+});
+
+test('footer default contains only the project GitHub link and preserves no-op bytes', () => {
+  const state = core.load(defaultRaw);
+  const footer = entryNamed(state, 'footer');
+  assert.equal(footer.footerMeta.error, null);
+  assert.equal(footer.footerLinks.find(link => link.label === 'GitHub').url, 'https://github.com/buzhidao10068/quartz-layout-editor');
+  assert.equal(footer.footerLinks.length, 1);
+  assert.equal(core.generate(state), defaultRaw);
+  const spacedRaw = defaultRaw.replace('        GitHub:', '        Example Link:');
+  const spacedState = core.load(spacedRaw);
+  assert.equal(entryNamed(spacedState, 'footer').footerLinks[0].label, 'Example Link');
+  assert.equal(core.generate(spacedState), spacedRaw);
+});
+
+test('footer child buttons patch only links and preserve opaque sibling options', () => {
+  const raw = defaultRaw.replace('      links:\n        GitHub:', '      copyright: |\n        Keep this opaque text\n      links:\n        GitHub:');
+  const state = core.load(raw);
+  const footer = entryNamed(state, 'footer');
+  const rows = [{ label: '关于我们 <&"', url: '/about#team' }, { label: 'Home', url: '/' }];
+  core.updateFooterLinks(state, footer.id, rows);
+  const output = core.generate(state);
+  assert.ok(independent(raw, output).every(path => path.startsWith(`plugins.${footer.id}.options.links`)));
+  assert.match(output, /      copyright: \|\n        Keep this opaque text/);
+  assert.deepEqual(plain(entryNamed(core.load(output), 'footer').footerLinks), rows);
+  core.updateFooterLinks(state, footer.id, []);
+  assert.match(core.generate(state), /      links: \{\}/);
+});
+
+for (const options of ['', '    options: {} # keep\n', '    options:\n      copyright: custom # keep\n', '    options:\n      links: {}\n']) {
+  test(`footer links insertion composes with enabled and layout patches: ${JSON.stringify(options)}`, () => {
+    const raw = `configuration:\n  pageTitle: Test\nplugins:\n  - source: "${core.CATALOG.find(entry => entry.displayName === 'Footer').source}"\n${options}`;
+    const state = core.load(raw);
+    const footer = entryNamed(state, 'footer');
+    core.updateFooterLinks(state, footer.id, [{ label: 'About', url: '/about' }]);
+    core.updateEntry(state, footer.id, { enabled: false, layout: { position: 'header', priority: 10 } });
+    const output = core.generate(state);
+    const loaded = core.load(output);
+    assert.equal(loaded.entries[0].enabled, false);
+    assert.equal(loaded.entries[0].layout.position, 'header');
+    assert.deepEqual(plain(loaded.entries[0].footerLinks), [{ label: 'About', url: '/about' }]);
+    independent(raw, output);
+    if (options.includes('# keep')) assert.match(output, /# keep/);
+  });
+}
+
+test('unsupported footer links remain opaque and read-only without preventing layout edits', () => {
+  for (const options of ['{ links: { About: /about } }', '\n      links: { About: /about }', '\n      links: &buttons\n        About: /about', '\n      links:\n        About: /about\n        About: /other']) {
+    const raw = `configuration:\n  pageTitle: Test\nplugins:\n  - source: "${core.CATALOG.find(entry => entry.displayName === 'Footer').source}"\n    options: ${options}\n`;
+    const state = core.load(raw);
+    assert.ok(state.entries[0].footerMeta.error);
+    assert.equal(core.generate(state), raw);
+    assert.throws(() => core.updateFooterLinks(state, 0, []), /只读/);
+    core.updateEntry(state, 0, { enabled: false });
+    independent(raw.replace('        About: /other\n', ''), core.generate(state).replace('        About: /other\n', ''));
+  }
+});
+
+test('footer links reject unsafe URLs, duplicate labels and prototype keys without mutation', () => {
+  const state = core.load(defaultRaw);
+  const footer = entryNamed(state, 'footer');
+  for (const url of ['javascript:alert(1)', 'data:text/html,x', '//evil.test', '/\\evil.test', '', 'https://', ' /about', 'java\nscript:x']) {
+    assert.throws(() => core.updateFooterLinks(state, footer.id, [{ label: 'Test', url }]), /地址/);
+  }
+  for (const label of ['', '__proto__', 'constructor', 'prototype', ' A ', 'A\nB']) {
+    assert.throws(() => core.updateFooterLinks(state, footer.id, [{ label, url: '/about' }]));
+  }
+  assert.throws(() => core.updateFooterLinks(state, footer.id, [{ label: 'A', url: '/' }, { label: 'A', url: '/about' }]), /唯一/);
+  assert.equal(core.generate(state), defaultRaw);
+});
 const independent = (before, after) => {
   const result = spawnSync(process.env.PYTHON || 'python', ['tests/yaml_paths_diff.py'], {
     cwd: root, input: JSON.stringify({ before, after }), encoding: 'utf8',
