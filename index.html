@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quartz Layout Editor 0.4 · 布局编辑器</title>
+<title>Quartz Layout Editor 0.5 · 布局编辑器</title>
 <meta name="description" content="完全离线的 Quartz v5 布局编辑器：拖动、调整、复制配置。">
 <style>
   :root {
@@ -132,6 +132,8 @@
   .tray-strip.drag-grip { display: block; width: 100%; min-width: 0; height: 36px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--teal); border-left-width: 4px; border-radius: 7px; background: var(--teal-soft); color: var(--teal-strong); text-align: left; font-size: 12px; font-weight: 650; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: none; user-select: none; }
   .tray-strip:active { cursor: grabbing; }
   .tray-strip.tray-create-footer { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+  .tray-strip.tray-create-full-footer { border-color: var(--ink); color: var(--ink); background: var(--surface-muted); }
+  #footer-links-editor [data-footer-row] + [data-footer-row] { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: 1rem; }
   .tray-strip.tray-create-spacer { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
   #component-tray .tray-card { padding: 0; border: 0; border-radius: 7px; background: transparent; box-shadow: none; }
   #component-tray .tray-card.selected { box-shadow: 0 0 0 2px var(--teal); }
@@ -393,7 +395,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 C5.37 0 0 5.37 0 12 C0 17.3 3.44 21.8 8.2 23.39 C8.8 23.5 9.02 23.13 9.02 22.81 V20.58 C5.68 21.3 4.98 19.16 4.98 19.16 C4.44 17.77 3.65 17.4 3.65 17.4 C2.56 16.65 3.73 16.67 3.73 16.67 C4.93 16.75 5.56 17.9 5.56 17.9 C6.63 19.73 8.37 19.2 9.05 18.9 C9.16 18.12 9.47 17.59 9.81 17.29 C7.14 16.99 4.34 15.96 4.34 11.36 C4.34 10.05 4.81 8.98 5.58 8.14 C5.46 7.84 5.04 6.62 5.7 4.97 C5.7 4.97 6.71 4.65 9 6.2 C9.96 5.93 10.98 5.8 12 5.8 C13.02 5.8 14.04 5.93 15 6.2 C17.29 4.65 18.3 4.97 18.3 4.97 C18.96 6.62 18.54 7.84 18.42 8.14 C19.19 8.98 19.66 10.05 19.66 11.36 C19.66 15.97 16.85 16.99 14.17 17.29 C14.6 17.66 14.99 18.39 14.99 19.51 V22.81 C14.99 23.13 15.2 23.5 15.81 23.39 C20.57 21.8 24 17.3 24 12 C24 5.37 18.63 0 12 0 Z"/></svg>
           <span class="sr-only" data-i18n="projectLink">项目地址 · GitHub ↗</span>
         </a>
-        <span class="pill neutral" data-i18n="offline">0.4 · 离线编辑</span><label class="language-control" for="language-select"><span data-i18n="language">界面语言</span><select id="language-select"><option value="zh-CN">中文</option><option value="en">English</option></select></label><button id="theme-toggle" type="button" data-action="theme" data-i18n="theme" data-i18n-aria="themeLabel">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate" data-i18n="generate">生成配置</button>
+        <span class="pill neutral" data-i18n="offline">0.5 · 离线编辑</span><label class="language-control" for="language-select"><span data-i18n="language">界面语言</span><select id="language-select"><option value="zh-CN">中文</option><option value="en">English</option></select></label><button id="theme-toggle" type="button" data-action="theme" data-i18n="theme" data-i18n-aria="themeLabel">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate" data-i18n="generate">生成配置</button>
       </div>
     </header>
     <section id="guide-panel" class="panel guide-panel" data-i18n-aria="guideLabel"></section>
@@ -889,18 +891,18 @@ const QuartzEditor = (() => {
     const entry = state.entries.find(item => item.id === id);
     if (!entry?.footerMeta || entry.footerMeta.error) fail("此 footer links 结构只读，请先在 YAML 中改为块映射");
     validateFooterLinks(rows);
-    if (entry.added && rows.length !== 1) fail("每个独立按钮组件只能包含一个按钮，请新建独立按钮组件");
+    if (entry.added && entry.footerKind !== "footer" && rows.length !== 1) fail("每个独立按钮组件只能包含一个按钮，请新建独立按钮组件");
     entry.footerLinks = clone(rows);
     state.dirty = true;
   }
 
-  function addFooter(state) {
+  function addFooter(state, kind = "button") {
     const catalog = CATALOG.find(component => component.displayName === "Footer");
     const existing = state.entries.find(entry => entry.footerMeta);
     const id = Math.max(-1, ...state.entries.map(entry => entry.id)) + 1;
     const priority = Math.max(0, ...slotEntries(state, "footer").map(item => item.priority)) + 10;
     const entry = { id, source: existing?.source || catalog.source, shortName: "footer", catalog,
-      added: true, enabled: true, enabledLine: null, span: null, layoutSpan: null,
+      added: true, footerKind: kind === "footer" ? "footer" : "button", enabled: true, enabledLine: null, span: null, layoutSpan: null,
       layout: { position: "footer", priority }, footerLinks: [{ label: "Button", url: "/about" }],
       footerMeta: { error: null }, original: { enabled: true, layout: null, footerLinks: [] } };
     state.entries.push(entry);
@@ -966,9 +968,25 @@ const QuartzEditor = (() => {
     pill: "background: var(--secondary); color: var(--light); border-color: var(--secondary); border-radius: 999px;"
   };
   function footerStyles(state, preferences) {
-    const urls = new Set(state.entries.filter(entry => entry.footerMeta && !entry.footerMeta.error).flatMap(entry => entry.footerLinks.map(row => row.url)));
+    const footerEntries = state.entries.filter(entry => entry.footerMeta && !entry.footerMeta.error);
+    const urls = new Set(footerEntries.flatMap(entry => entry.footerLinks.map(row => row.url)));
+    const fullFooterUrls = new Set(footerEntries.filter(entry => entry.footerKind === "footer").flatMap(entry => entry.footerLinks.map(row => row.url)));
     const quote = value => '"' + Array.from(value, character => /[a-zA-Z0-9/_:.#?=&%@+-]/.test(character) ? character : `\\${character.codePointAt(0).toString(16)} `).join("") + '"';
+    const footerSignature = rows => rows.map(row => row.url).join("\u0000");
     const rules = [];
+    const independentUrls = new Set(footerEntries.filter(entry => entry.footerKind === "button" && entry.footerLinks.length === 1).map(entry => entry.footerLinks[0].url).filter(url => !fullFooterUrls.has(url)));
+    for (const url of independentUrls) {
+      rules.push(`footer:has(> ul > li:only-child > a[href=${quote(url)}]) > p { display: none; }`);
+    }
+    const importedFullSignatures = new Set(footerEntries.filter(entry => entry.footerKind === "footer" && !entry.added).map(entry => footerSignature(entry.footerLinks)));
+    const hasImportedEmptyFooter = footerEntries.some(entry => entry.footerKind === "footer" && !entry.added && entry.footerLinks.length === 0);
+    if (footerEntries.some(entry => entry.footerKind === "footer" && entry.added && entry.footerLinks.length === 0) && !hasImportedEmptyFooter) {
+      rules.push(`footer:has(> ul:empty) > p { display: none; }`);
+    }
+    for (const entry of footerEntries.filter(item => item.footerKind === "footer" && item.added && item.footerLinks.length && !importedFullSignatures.has(footerSignature(item.footerLinks)))) {
+      const links = entry.footerLinks.map((row, index) => `:has(> ul > li:nth-child(${index + 1}) > a[href=${quote(row.url)}])`).join("");
+      rules.push(`footer${links}:not(:has(> ul > li:nth-child(${entry.footerLinks.length + 1}))) > p { display: none; }`);
+    }
     for (const [url, preference] of Object.entries(preferences)) {
       const { style, icon, image } = footerAppearance(preference);
       if (!urls.has(url) || !(style || icon || image)) continue;
@@ -1084,7 +1102,7 @@ const QuartzEditor = (() => {
           validateLayout(entry.layout, false, field.line);
         }
       });
-      if (entry.catalog && entry.shortName === "footer") readFooterLinks(lines, entry, properties);
+      if (entry.catalog && entry.shortName === "footer") { readFooterLinks(lines, entry, properties); entry.footerKind = "footer"; }
       entry.original = { enabled: entry.enabled, layout: clone(entry.layout), footerLinks: clone(entry.footerLinks) };
       return entry;
     });
@@ -1463,6 +1481,15 @@ const QuartzEditor = (() => {
     createComponents: ["新增组件", "Create components"],
     createComponentsHelp: ["拖入布局即可新建并启用；点击仅创建未启用组件，可先设置属性，再勾选启用或拖入布局。可重复创建，无需额外插件。", "Drag into the layout to create and enable. Clicking creates a disabled component: configure it, then check Enable or drag it into the layout. Repeatable, with no additional plugin."],
     trayNewFooter: ["新增独立按钮 · Footer", "New button · Footer"], trayNewSpacer: ["新增占位间隔 · Spacer", "New spacing · Spacer"],
+    trayNewFullFooter: ["新增页脚 · Footer", "New footer · Footer"],
+    fullFooterAdd: ["新增页脚组件（原生 Footer）", "Add footer component (native Footer)"],
+    fullFooterName: ["页脚", "Footer"], buttonInstanceName: ["独立按钮 · Footer", "Independent button · Footer"],
+    fullFooterSettings: ["页脚链接设置 · 原生 Footer", "Footer links · native Footer"],
+    fullFooterHelp: ["页脚可创建多个，分别启用、移动或分组。新建页脚不显示 Quartz 署名；导入的原版 Footer 保留原生署名、版本号与年份。下方可添加、修改或移除多个链接，也可不含链接。完成输入并离开输入框后自动保存；无效输入会提示错误并保留草稿。新增或移除链接会同时保存当前有效的链接草稿。", "Create multiple footers with independent visibility, placement and grouping. New footers hide the Quartz credit; imported native Footers retain the native credit, version and year. Add, edit or remove multiple links below, or keep no links. Changes save automatically when you leave an input. Invalid input shows an error and keeps the draft. Adding or removing a link also saves the current valid link drafts."],
+    fullFooterLinksAdd: ["添加链接", "Add link"],
+    fullFooterLinkRemove: ["移除链接 {number}", "Remove link {number}"],
+    fullFooterEmpty: ["暂无自定义链接；新建页脚不显示 Quartz 署名，导入的原版 Footer 保留署名。", "No custom links. New footers hide the Quartz credit; imported native Footers retain it."],
+    fullFooterPreviewHelp: ["新建页脚不显示 Quartz 署名；导入的原版 Footer 保留署名。预览中的 v5.0.0 为示例，实际版本与年份由 Quartz 在构建时生成，不会写入配置。重新导入时所有 Footer 均作为完整页脚编辑，原生 YAML 不区分独立按钮与页脚。", "New footers hide the Quartz credit; imported native Footers retain it. The preview v5.0.0 is illustrative; Quartz generates the actual version and year at build time, and neither is written to config. Reimported Footer entries are edited as full footers because native YAML does not distinguish independent buttons from footers."],
     spacerInstanceAdd: ["新增占位间隔（原生 Spacer）", "Add spacing (native Spacer)"],
     spacerInstanceHelp: ["可创建多个 Spacer，各自设置位置、显示条件和分组。组内可设置 basis 留出固定主轴间隔；未分组时使用原生 Spacer 默认行为。页面排除 spacer 会影响所有实例。", "Create multiple Spacers with independent positions, visibility and groups. In a group, use basis for a fixed main-axis gap; ungrouped Spacers use native defaults. Excluding spacer affects every instance."],
     spacerInstanceUpdated: ["原生 Spacer 实例已更新。", "Native Spacer instances updated."],
@@ -1493,7 +1520,6 @@ const QuartzEditor = (() => {
     footerComponents: ["按钮设置 · 原生 Footer", "Button settings · native Footer"],
     chooseComponent: ["选择组件（不改变启用状态）", "Choose component (keeps enabled state)"],
     footerSingleHelp: ["每个独立按钮组件只有一个按钮，直接设置名称、目标和外观。需要另一个按钮，请到组件托盘新增独立按钮，不在组件内嵌套。", "Each independent component has one button. Edit its label, target and appearance directly. Create another independent button in Component tray instead of nesting buttons here."],
-    footerLegacyHelp: ["导入的 Footer 包含多个链接，已保留原配置并设为只读，不会自动删除或拆分。请在 YAML 中整理为每个 Footer 一个链接，再导入；新按钮请在组件托盘单独创建。", "This imported Footer has multiple links. Its configuration is preserved read-only, without deleting or splitting links. Arrange one link per Footer in YAML and reimport; create new independent buttons in Component tray."],
     footerSpecial: ["特殊子组件 · footer links", "Special child · footer links"],
     footerLinksHelp: ["按钮名称就是读者看到的文字，目标填写页面路径（如 /about、/notes/start）或完整网址。按钮随页脚组件一起移动、启用或隐藏，不能独立拖到其他槽位；输出到 footer.options.links，不会添加新插件。子目录部署时请包含站点前缀，并在部署后验证路径。", "Labels are the button text. Use a page path (such as /about or /notes/start) or a full URL. Buttons move, enable and hide with Footer, not independently between slots. Output uses footer.options.links, never a new plugin. Include your site prefix for subdirectory deployments and verify paths after deployment."],
     footerLinkLabel: ["按钮名称", "Button label"], footerLinkUrl: ["目标页面 / 地址", "Target page / URL"],
@@ -1502,10 +1528,10 @@ const QuartzEditor = (() => {
     footerLinkReadonly: ["现有 links 使用不支持的结构，保持原样且只读。请先在 YAML 中使用“名称: 地址”的块映射。", "Existing links use unsupported syntax and remain read-only and unchanged. Use a block mapping of labels to URLs in YAML to edit them here."],
     footerLinkPreview: ["编辑按钮 {name}；目标 {url}；预览不跳转", "Edit button {name}; target {url}; preview does not navigate"],
     footerLinkUpdated: ["自定义按钮已更新，仅修改 footer.options.links。", "Custom buttons updated in footer.options.links only."],
-    footerBuiltWith: ["使用 Quartz 构建", "Built with Quartz"],
+    footerBuiltWith: ["Created with Quartz v5.0.0 © {year}", "Created with Quartz v5.0.0 © {year}"],
     footerInstanceAdd: ["新增独立按钮组件（原生 Footer）", "Add independent buttons (native Footer)"],
     footerInstanceRemove: ["删除", "Delete"],
-    footerInstanceHelp: ["每个独立按钮对应一个原生 Footer 实例，可分别拖到六个槽位。需要更多按钮，请在组件托盘新增。原生 Footer 保留 Quartz 署名；页面排除 footer 会影响所有实例。", "Each independent button uses one native Footer instance, movable to any of the six slots. Add more buttons in Component tray. Native Footer retains its Quartz credit. Excluding footer affects every instance."],
+    footerInstanceHelp: ["页脚和独立按钮均为原生 Footer 实例，可分别拖到六个槽位。新建页脚支持多个链接且不显示 Quartz 署名；导入的原版 Footer 保留署名。独立按钮只包含一个按钮，也不显示署名。页面排除 footer 会影响所有实例。", "Footers and independent buttons are native Footer instances, movable to any of the six slots. New full footers support multiple links and hide the Quartz credit; imported native Footers retain it. Independent buttons have exactly one link and also hide the credit. Excluding footer affects every instance."],
     footerInstanceUpdated: ["原生 Footer 实例已更新，未引入任何新插件。", "Native Footer instances updated; no new plugin introduced."],
     footerButtonStyle: ["按钮样式", "Button style"],
     footerStyleNative: ["原生链接（不生成样式）", "Native link (no stylesheet)"],
@@ -1516,13 +1542,13 @@ const QuartzEditor = (() => {
     footerStyleCopy: ["复制按钮样式", "Copy button styles"],
     footerStyleCopied: ["按钮样式已复制，请粘贴到 custom.scss。", "Button styles copied. Paste into custom.scss."],
     footerStyleFallback: ["自动复制不可用：按钮样式已全选，请按 Ctrl+C。", "Automatic copy is unavailable. Button styles are selected; press Ctrl+C."],
-    guideFooter: ["想添加页面入口或间隔？打开悬浮条的“组件托盘”，在顶部“新增组件”创建独立 Footer 按钮或 Spacer，再分别设置位置。按钮支持文字、图标和本地图片，外观通过原生 custom.scss 单独导出，生成配置时须另外复制；不会添加外来插件。", "Need page shortcuts or spacing? Open Component tray in the floating bar and use Create components at the top to add native Footer buttons or Spacers, then set their positions. Buttons support text, icons and local images; copy the separately exported native custom.scss as well as YAML. No external plugin is added."],
+    guideFooter: ["想添加页脚、页面入口或间隔？打开悬浮条的“组件托盘”，在顶部新增页脚、独立按钮或 Spacer。新建页脚和独立按钮都不显示 Quartz 署名；导入的原版 Footer 保留署名。页脚可配置多个链接，独立按钮只含一个按钮。按钮外观通过原生 custom.scss 单独导出，生成配置时须另外复制，不会添加外来插件。", "Need footers, page shortcuts or spacing? Open Component tray in the floating bar to create footers, independent buttons or Spacers. New footers and independent buttons hide the Quartz credit; imported native Footers retain it. Full footers support multiple links; independent buttons have one. Copy the separately exported native custom.scss as well as YAML for button appearances. No external plugin is added."],
     projectLink: ["项目地址 · GitHub ↗", "Project repository · GitHub ↗"],
-    title: ["Quartz Layout Editor 0.4 · 布局编辑器", "Quartz Layout Editor 0.4"],
+    title: ["Quartz Layout Editor 0.5 · 布局编辑器", "Quartz Layout Editor 0.5"],
     brand: ["QUARTZ · 布局工作台", "QUARTZ · LAYOUT STUDIO"],
     heading: ["让每个组件，各就其位。", "A place for every component."],
     subtitle: ["Quartz v5 布局编辑器 · 完全离线 · 不改动你的项目文件", "Quartz v5 layout editor · Fully offline · Your project files stay untouched"],
-    offline: ["0.4 · 离线编辑", "0.4 · Offline editor"], language: ["界面语言", "Interface language"],
+    offline: ["0.5 · 离线编辑", "0.5 · Offline editor"], language: ["界面语言", "Interface language"],
     theme: ["切换主题", "Toggle theme"], themeLabel: ["切换明暗主题", "Toggle light and dark theme"],
     generate: ["生成配置", "Generate config"], skip: ["跳到布局画布", "Skip to layout canvas"],
     leftRail: ["组件托盘与非布局插件", "Component tray and non-layout plugins"], canvas: ["六槽位布局画布", "Six-slot layout canvas"],
@@ -1648,7 +1674,7 @@ const QuartzEditor = (() => {
       case "comments": content = `<div class="effect-widget-heading">${esc(name)}</div><div class="effect-comment">${text("draftSampleComment")}</div>`; break;
       case "recent-notes": content = `<div class="effect-widget-heading">${esc(name)}</div><div class="effect-link">${title}</div><div class="effect-meta">${text("draftSampleMeta")}</div>`; break;
       case "stacked-pages": content = `<div class="effect-stack"><div>${text("draftSampleRelated")}</div><div>${title}</div></div>`; break;
-      case "footer": content = `<div class="effect-footer">${text("footerBuiltWith")}${entry.footerMeta?.error ? `<p class="small">${text("footerLinkReadonly")}</p>` : `<div class="effect-footer-links">${(entry.footerLinks || []).map((row, index) => `<button type="button" data-action="footer-link-edit" data-id="${entry.id}" data-index="${index}" data-footer-link="${index}" title="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}" aria-label="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}">${esc(row.label)}</button>`).join("")}</div>`}</div>`; break;
+      case "footer": content = `<div class="effect-footer">${entry.footerKind === "footer" && !entry.added ? `<p>${esc(translate("footerBuiltWith", { year: new Date().getFullYear() }))}</p>` : ""}${entry.footerMeta?.error ? `<p class="small">${text("footerLinkReadonly")}</p>` : `<div class="effect-footer-links">${(entry.footerLinks || []).map((row, index) => `<button type="button" data-action="footer-link-edit" data-id="${entry.id}" data-index="${index}" data-footer-link="${index}" title="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}" aria-label="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}">${esc(row.label)}</button>`).join("")}</div>`}</div>`; break;
       default: content = `<div class="effect-widget-heading">${esc(name)}</div>`;
     }
     return `<div class="effect-component effect-${esc(entry.shortName)}${state.ui.toolPanel && state.selected === entry.id ? " effect-selected" : ""}" data-effect-entry="${entry.id}" data-effect-source="${esc(entry.shortName)}" data-effect-position="${esc(position)}" title="${esc(`${name} · ${entry.shortName} → ${position}`)}">${content}</div>`;
@@ -1733,7 +1759,7 @@ const QuartzEditor = (() => {
   const sourceText = source => typeof source === "string" ? source : JSON.stringify(source ?? "");
   const entryEnglishName = entry => entry.catalog?.displayName || EN_PLUGIN_NAMES[entry.shortName] || entry.shortName;
   const entryName = entry => {
-    const name = state.ui.locale === "zh-CN" ? entry.catalog?.chineseName || ZH_PLUGIN_NAMES[entry.shortName] || entry.shortName : entryEnglishName(entry);
+    const name = entry.footerMeta ? translate(entry.footerKind === "button" ? "buttonInstanceName" : "fullFooterName") : state.ui.locale === "zh-CN" ? entry.catalog?.chineseName || ZH_PLUGIN_NAMES[entry.shortName] || entry.shortName : entryEnglishName(entry);
     if (entry.footerMeta && state.entries.filter(item => item.footerMeta).length > 1) return `${name} #${entry.id + 1} · ${entry.footerLinks?.[0]?.label || "Footer"}`;
     return entry.shortName === "spacer" && state.entries.filter(item => item.shortName === "spacer").length > 1 ? `${name} #${entry.id + 1}` : name;
   };
@@ -1852,9 +1878,13 @@ const QuartzEditor = (() => {
   function renderFooterComponents(entry, editable = false) {
     if (!entry.footerMeta) return "";
     if (!editable) return "";
-    const readonly = entry.footerMeta.error || entry.footerLinks.length > 1;
-    const row = entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" };
-    return `<fieldset id="footer-links-editor"><legend>${esc(translate("footerComponents"))}</legend><p class="notice">${esc(translate("footerSingleHelp"))}</p>${readonly ? `<p class="notice warning">${esc(translate(entry.footerMeta.error ? "footerLinkReadonly" : "footerLegacyHelp"))}</p>` : `<div data-footer-row="0">${textField("footer-link-label-0", translate("footerLinkLabel"), row.label)}${textField("footer-link-url-0", translate("footerLinkUrl"), row.url)}</div>`}</fieldset>`;
+    const full = entry.footerKind === "footer";
+    const rows = full ? entry.footerLinks : [entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" }];
+    return `<fieldset id="footer-links-editor"><legend>${esc(translate(full ? "fullFooterSettings" : "footerComponents"))}</legend><p class="notice">${esc(translate(full ? "fullFooterHelp" : "footerSingleHelp"))}</p>${entry.footerMeta.error ? `<p class="notice warning">${esc(translate("footerLinkReadonly"))}</p>` : `${rows.map((row, index) => `<div data-footer-row="${index}">${textField(`footer-link-label-${index}`, translate("footerLinkLabel"), row.label)}${textField(`footer-link-url-${index}`, translate("footerLinkUrl"), row.url)}${full ? `<button type="button" data-action="footer-links-remove" data-index="${index}">${esc(translate("fullFooterLinkRemove", { number: index + 1 }))}</button>` : ""}</div>`).join("")}${full ? `${rows.length ? "" : `<p class="small">${esc(translate("fullFooterEmpty"))}</p>`}<button type="button" data-action="footer-links-add">${esc(translate("fullFooterLinksAdd"))}</button>` : ""}`}</fieldset>`;
+  }
+  function footerLinkDrafts(entry) {
+    const rows = entry.footerKind === "footer" ? entry.footerLinks : [entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" }];
+    return rows.map((row, index) => ({ label: draft(`footer-link-label-${index}`, row.label), url: draft(`footer-link-url-${index}`, row.url) }));
   }
   function renderCard(entry) {
     if (!entry.enabled || invalidPosition(entry)) {
@@ -1910,15 +1940,16 @@ const QuartzEditor = (() => {
     const entry = state.selected === null ? null : entryById(state.selected);
     document.querySelector("#properties-panel > .panel-body").insertAdjacentHTML("afterbegin", selectField("selected-component", translate("chooseComponent"), [["", translate("chooseComponent")], ...state.entries.filter(item => item.catalog).map(item => [String(item.id), `${entryName(item)} · #${item.id + 1}`])], entry ? String(entry.id) : ""));
     document.querySelector("#tray-panel > .panel-body").insertAdjacentHTML("afterbegin", `<section class="component-create" aria-label="${esc(translate("createComponents"))}"><h3 class="sr-only">${esc(translate("createComponents"))}</h3><button id="footer-instance-add" class="tray-strip drag-grip tray-create-footer" draggable="true" type="button" data-create-type="footer" data-action="footer-instance-add" aria-label="${esc(translate("footerInstanceAdd"))}" title="${esc(translate("createComponentsHelp"))}">${esc(translate("trayNewFooter"))}</button><button id="spacer-instance-add" class="tray-strip drag-grip tray-create-spacer" draggable="true" type="button" data-create-type="spacer" data-action="spacer-instance-add" aria-label="${esc(translate("spacerInstanceAdd"))}" title="${esc(translate("createComponentsHelp"))}">${esc(translate("trayNewSpacer"))}</button></section>`);
+    document.querySelector("#tray-panel .component-create").insertAdjacentHTML("afterbegin", `<button id="full-footer-instance-add" class="tray-strip drag-grip tray-create-full-footer" draggable="true" type="button" data-create-type="full-footer" data-action="full-footer-instance-add" aria-label="${esc(translate("fullFooterAdd"))}" title="${esc(translate("createComponentsHelp"))}">${esc(translate("trayNewFullFooter"))}</button>`);
     renderGroupOptionsHelp(entry);
     if (entry?.shortName === "spacer") document.querySelector("#properties-panel > .panel-body").insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("spacerInstanceHelp"))}</p>${entry.added ? `<button class="component-delete" type="button" data-action="spacer-instance-remove">${esc(translate("footerInstanceRemove"))}</button>` : ""}`);
     if (!entry?.footerMeta) return;
     const body = document.querySelector("#properties-panel > .panel-body");
-    const editable = !entry.footerMeta.error && entry.footerLinks.length <= 1;
-    const saveButton = editable ? `<button class="primary" type="button" data-action="footer-link-save" data-index="0">${esc(translate("footerLinkSave"))}</button>` : "";
+    const editable = !entry.footerMeta.error;
+    const saveButton = editable && entry.footerKind !== "footer" ? `<button class="primary" type="button" data-action="footer-link-save" data-index="0">${esc(translate("footerLinkSave"))}</button>` : "";
     const deleteButton = entry.added ? `<button class="component-delete" type="button" data-action="footer-instance-remove">${esc(translate("footerInstanceRemove"))}</button>` : "";
-    body.insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("footerInstanceHelp"))}</p>${renderFooterComponents(entry, true)}<p class="small">${esc(translate("footerStyleHelp"))}</p>${saveButton || deleteButton ? `<div class="component-actions">${saveButton}${deleteButton}</div>` : ""}`);
-    if (entry.footerMeta.error || entry.footerLinks.length > 1) return;
+    body.insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("footerInstanceHelp"))}</p>${renderFooterComponents(entry, true)}<p class="small">${esc(translate("fullFooterPreviewHelp"))}</p><p class="small">${esc(translate("footerStyleHelp"))}</p>${saveButton || deleteButton ? `<div class="component-actions">${saveButton}${deleteButton}</div>` : ""}`);
+    if (entry.footerMeta.error) return;
     for (const [index, row] of entry.footerLinks.entries()) {
       const preference = state.ui.footerStyles[row.url];
       const appearance = core.footerAppearance(preference);
@@ -2241,16 +2272,18 @@ const QuartzEditor = (() => {
         core.removeAddedSpacer(state, state.selected); showToolPanel("tray-panel"); state.ui.drafts = {}; state.ui.error = null;
         setMessage("spacerInstanceUpdated"); render(); document.getElementById("spacer-instance-add")?.focus({ preventScroll: true }); return;
       }
-      if (action === "footer-instance-add") {
-        const entry = core.addFooter(state);
+      if (action === "footer-instance-add" || action === "full-footer-instance-add") {
+        const full = action === "full-footer-instance-add";
+        const entry = core.addFooter(state, full ? "footer" : "button");
         core.updateEntry(state, entry.id, { enabled: false });
-        core.updateFooterLinks(state, entry.id, [{ label: translate("footerLinkDefault"), url: "/about" }]);
+        core.updateFooterLinks(state, entry.id, full ? [] : [{ label: translate("footerLinkDefault"), url: "/about" }]);
         showToolPanel("properties-panel"); state.ui.drafts = {}; state.ui.error = null;
         setMessage("footerInstanceUpdated"); render(); focusToolPanel(); return;
       }
       if (action === "footer-instance-remove") {
+        const full = entryById(state.selected)?.footerKind === "footer";
         core.removeAddedFooter(state, state.selected); showToolPanel("tray-panel"); state.ui.drafts = {}; state.ui.error = null;
-        setMessage("footerInstanceUpdated"); render(); document.getElementById("footer-instance-add")?.focus({ preventScroll: true }); return;
+        setMessage("footerInstanceUpdated"); render(); document.getElementById(full ? "full-footer-instance-add" : "footer-instance-add")?.focus({ preventScroll: true }); return;
       }
       if (action === "footer-link-edit") {
         selectComponent(button.dataset.id);
@@ -2261,11 +2294,23 @@ const QuartzEditor = (() => {
       }
       if (action === "footer-link-save") {
         const entry = entryById(state.selected);
-        if (entry.footerLinks.length > 1) return;
-        const row = entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" };
-        const rows = [{ label: draft("footer-link-label-0", row.label), url: draft("footer-link-url-0", row.url) }];
-        core.updateFooterLinks(state, entry.id, rows); state.ui.drafts = {}; state.ui.error = null; setMessage("footerLinkUpdated"); render();
+        core.updateFooterLinks(state, entry.id, footerLinkDrafts(entry)); state.ui.drafts = {}; state.ui.error = null; setMessage("footerLinkUpdated"); render();
         return;
+      }
+      if (action === "footer-links-add" || action === "footer-links-remove") {
+        const entry = entryById(state.selected);
+        if (entry.footerKind !== "footer" || entry.footerMeta.error) return;
+        const rows = footerLinkDrafts(entry);
+        if (action === "footer-links-remove") rows.splice(Number(button.dataset.index), 1);
+        else {
+          const label = translate("footerLinkDefault");
+          let suffix = 1;
+          while (rows.some(row => row.label === `${label} ${suffix}`)) suffix++;
+          rows.push({ label: `${label} ${suffix}`, url: "/about" });
+        }
+        core.updateFooterLinks(state, entry.id, rows); state.ui.drafts = {}; state.ui.error = null;
+        setMessage("footerLinkUpdated"); render();
+        document.getElementById(action === "footer-links-add" ? `footer-link-label-${rows.length - 1}` : "footer-links-editor")?.focus({ preventScroll: true }); return;
       }
       if (action === "draft-edit") { state.selected = Number(button.dataset.id); state.ui.boardView = "edit"; revealEntry(state.selected); render(); document.querySelector(`[data-focus="select-${state.selected}"]`)?.focus(); return; }
       if (action === "select") { selectComponent(button.dataset.id); }
@@ -2284,6 +2329,8 @@ const QuartzEditor = (() => {
       else if (action === "confirm-load") { const pending = state.ui.pending; loadConfig(pending.text, pending.source); }
       else if (action === "cancel-load") { state.ui.pending = null; render(); }
       else if (action === "generate") {
+        const entry = entryById(state.selected);
+        if (entry?.footerKind === "footer" && !entry.footerMeta.error) core.updateFooterLinks(state, entry.id, footerLinkDrafts(entry));
         const text = core.generate(state);
         state.ui.output = { text, diff: core.diffLines(core.originalText(state), text) };
         state.dirty = false; state.ui.modalOpen = true; state.ui.copyMessage = null; state.ui.error = null; setMessage("generated"); render();
@@ -2302,6 +2349,16 @@ const QuartzEditor = (() => {
   document.addEventListener("change", async event => {
     const input = event.target;
     try {
+      if (/^footer-link-(label|url)-\d+$/.test(input.id)) {
+        const entry = entryById(state.selected);
+        if (entry?.footerKind !== "footer") return;
+        try {
+          core.updateFooterLinks(state, entry.id, footerLinkDrafts(entry));
+          for (const key of Object.keys(state.ui.drafts)) if (/^footer-link-(label|url)-\d+$/.test(key)) delete state.ui.drafts[key];
+          state.ui.error = null; setMessage("footerLinkUpdated");
+        } catch (error) { state.ui.error = error; state.ui.tone = "error"; }
+        setTimeout(() => render(), 0); return;
+      }
       if (input.id === "language-select" || input.dataset.control === "locale") { setLocale(input.value); return; }
       if (input.id === "draft-width") { state.ui.draftContext.width = Number(input.value); render(); return; }
       if (input.id === "draft-page-type") { state.ui.draftContext.pageType = input.value; render(); return; }
@@ -2403,7 +2460,8 @@ const QuartzEditor = (() => {
     if (!target || createType && target.position === "tray") return;
     try {
       if (createType) {
-        const entry = createType === "footer" ? core.addFooter(state) : core.addSpacer(state);
+        const entry = createType === "full-footer" ? core.addFooter(state, "footer") : createType === "footer" ? core.addFooter(state) : core.addSpacer(state);
+        if (createType === "full-footer") core.updateFooterLinks(state, entry.id, []);
         id = entry.id;
       }
       moveEntry(id, target.position, target.index, target.group);

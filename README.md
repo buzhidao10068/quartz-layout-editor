@@ -2,7 +2,7 @@
 
 Quartz v5 布局配置的可视化编辑器。单文件 HTML，离线可用，拖拽调整组件位置后生成可直接粘回 `quartz.config.yaml` 的配置。
 
-当前发布版本：**0.4**（Git 标签与 GitHub Release 同名）。下载 Release 附件 `index.html` 即可离线使用。
+当前发布版本：**0.5**（Git 标签与 GitHub Release 同名）。下载 Release 附件 `index.html` 即可离线使用。
 
 ## 要解决的问题
 
@@ -22,10 +22,10 @@ Quartz v5 把布局写在 `quartz.config.yaml` 里：每个提供组件的插件
 
 ### 长页面操作
 
-- 组件托盘使用单行名称拖动条：绿色为现有组件，黄色为新增 Footer 按钮，红色为新增 Spacer。拖动现有条到布局即可启用，拖动新增条到槽位或组内即可创建实例（取消不创建）；也可点击名称或按 Enter 打开属性。托盘不再展示说明、徽章、排序或下拉框，详细设置统一在组件属性中操作。长名称单行省略，悬停可看完整名称。
+- 组件托盘使用单行名称拖动条：绿色为现有组件，中性色为新增完整页脚，黄色为新增 Footer 按钮，红色为新增 Spacer。拖动现有条到布局即可启用，拖动新增条到槽位或组内即可创建实例（取消不创建）；也可点击名称或按 Enter 打开属性。托盘不再展示说明、徽章、排序或下拉框，详细设置统一在组件属性中操作。长名称单行省略，悬停可看完整名称。
 - 编辑画布不再为每个组件重复显示分组下拉框；仅保留 toolbar 这类实际分组的统一容器。已启用组件的属性也不显示「分组（group）」字段，加入或移出组请直接拖入／拖出；未启用组件仍保留分组名称入口。组整体配置通过「编辑组」或悬浮条的「分组容器」打开。
 
-The tray uses compact name-only draggable rows: green for existing components, yellow for new Footer buttons, red for new Spacers. Drag existing rows into the layout to enable them, or drag creation rows into a slot/group to create an instance; cancellation creates nothing. Click a name or press Enter for properties. Descriptions and controls live in properties, not the tray; long names truncate with a full-name tooltip.
+The tray uses compact name-only draggable rows: green for existing components, neutral for new full footers, yellow for new Footer buttons, red for new Spacers. Drag existing rows into the layout to enable them, or drag creation rows into a slot/group to create an instance; cancellation creates nothing. Click a name or press Enter for properties. Descriptions and controls live in properties, not the tray; long names truncate with a full-name tooltip.
 
 The layout canvas no longer repeats a group selector on every component. Actual groups such as toolbar keep a single shared container. Enabled components also omit the Group field in properties; drag them into/out of groups to change membership. Disabled components retain the group assignment field. Use Edit group or Group containers for group-wide settings.
 
@@ -105,13 +105,19 @@ The preview spans the workspace and uses legible system fonts. Region labels inc
 
 ## 自定义按钮组件
 
-每个独立按钮组件只有一个按钮，在组件属性的「按钮设置 · 原生 Footer」直接填写名称与目标（如 `/about`、`/notes/start` 或完整网址），点击「保存按钮」。不再提供嵌套按钮、添加按钮或组内排序入口；需要另一个按钮，请回到组件托盘新增独立按钮。效果预览使用实际按钮文字；点击预览按钮打开其设置，不跳转目标页面。导入的多链接 Footer 保留原配置并显示只读说明，不会自动删除或拆分；可先在 YAML 中整理为每个 Footer 一个链接再导入。
+每个独立按钮组件只有一个按钮，在组件属性的「按钮设置 · 原生 Footer」直接填写名称与目标（如 `/about`、`/notes/start` 或完整网址），点击「保存按钮」。不提供嵌套按钮；需要另一个独立按钮，请回到组件托盘新增。效果预览使用实际按钮文字；点击预览按钮打开其设置，不跳转目标页面。
+
+**完整页脚也可以创建多个。** 在组件托盘点击或拖动「新增页脚 · Footer」，每个页脚独立启用、移动、分组；新建页脚不显示 Quartz 署名，导入的原版 Footer 保留原生 `Created with Quartz v版本号 © 年份`。在「页脚链接设置」添加、修改、移除多个链接，完成输入并离开输入框后自动保存，不再显示「保存链接」按钮；也可移除全部链接。无效输入保留草稿并显示错误，不会覆盖已保存配置。添加、移除链接时会同时保存当前有效草稿，重复名称或危险地址会阻止操作。导入的多链接页脚现在也可以直接编辑，不会自动拆分或丢弃链接；不支持的 YAML 结构仍保持只读。
+
+新增页脚与独立按钮均采用原生 Footer，导出不包含自定义类型字段；重新导入后统一作为完整页脚编辑。新建页脚和独立按钮的预览及单独导出的 CSS 不显示 Quartz 署名，导入的原版 Footer 保留署名。独立按钮的单按钮限制仅用于当前会话的新建入口。预览署名中的 `v5.0.0` 为示例，实际版本和年份由 Quartz 构建时生成，不会被编辑器改写。
+
+**Repeatable full footers:** click or drag **New footer · Footer** in Component tray. New instances hide the Quartz credit; imported native Footers retain `Created with Quartz vVERSION © YEAR`. Each instance has independent placement, grouping and visibility. Add, edit or remove multiple links in Footer links. Changes save automatically when you leave an input, without a Save links button; invalid input keeps the draft and shows an error without overwriting saved config. Removing all links is supported. Adding/removing a link also saves valid drafts; duplicate labels and unsafe targets reject the operation. Imported multi-link footers are editable without splitting or dropping links; unsupported YAML syntax remains read-only. Independent buttons still have exactly one button when created. Native YAML does not encode this distinction, so reimported instances are edited as full footers. Preview version `v5.0.0` is illustrative; Quartz generates the actual version/year at build time.
 
 **只用原生，不安装外来插件。** 打开悬浮条的「组件托盘」，点击或拖动黄色「新增独立按钮 · Footer」；这里也可重复添加 Spacer。每个独立按钮对应一个原生 Footer 实例，可分别拖到六个槽位，独立启用或隐藏。输出仍为原生 Footer 的 `options.links` 和 `layout`，不生成自定义插件或虚构参数。名称不能为空，禁止危险协议。根路径 `/about` 指向域名根目录；Cloudflare 子目录部署时请包含站点路径前缀，部署后验证目标页面存在。
 
-属性中可选原生链接、简洁文字、描边、实心、胶囊样式。样式通过 Quartz 自带的 `quartz/styles/custom.scss` 实现：生成配置后，**另行复制按钮样式**，追加到已有文件末尾；如已粘贴过本编辑器生成的样式，请替换旧段，不要重复追加。仅粘贴 YAML 不会应用样式。相同目标 URL 的 Footer 按钮共用样式；选择仅保留于当前编辑会话，重新加载 YAML 不会恢复。保留原生 Quartz 署名，每个 Footer 实例都会显示；页面覆盖排除 `footer` 会影响所有实例。用原有 Cloudflare 构建部署流程即可，无需安装插件。本编辑器不会写入你的站点。
+属性中可选原生链接、简洁文字、描边、实心、胶囊样式。样式通过 Quartz 自带的 `quartz/styles/custom.scss` 实现：生成配置后，**另行复制按钮样式**，追加到已有文件末尾；如已粘贴过本编辑器生成的样式，请替换旧段，不要重复追加。仅粘贴 YAML 不会应用样式。新建页脚和独立按钮会同时导出隐藏 Quartz 署名的 CSS，导入的完整页脚仍保留原生署名。相同目标 URL 的 Footer 按钮共用样式；选择仅保留于当前编辑会话，重新加载 YAML 不会恢复。页面覆盖排除 `footer` 会影响所有实例。用原有 Cloudflare 构建部署流程即可，无需安装插件。本编辑器不会写入你的站点。
 
-「按钮外观」提供文字、本地图片、外链图标三种选择，不再提供内置图标选项。本地 PNG / JPEG / WebP 图片可代替可见文字，最大 1 MiB、2048 × 2048，直接嵌入导出的样式，不请求外部图床；本地上传不支持 SVG。请保留有意义的按钮名称，它仍是无障碍文字。图片、外链图标和样式均为当前会话设置，不写入 YAML，生成时必须同时复制样式；重新载入后需重新选择。相同 URL 共用外观，原生署名不会隐藏。
+「按钮外观」提供文字、本地图片、外链图标三种选择，不再提供内置图标选项。本地 PNG / JPEG / WebP 图片可代替可见文字，最大 1 MiB、2048 × 2048，直接嵌入导出的样式，不请求外部图床；本地上传不支持 SVG。请保留有意义的按钮名称，它仍是无障碍文字。图片、外链图标和样式均为当前会话设置，不写入 YAML，生成时必须同时复制样式；重新载入后需重新选择。新建页脚和独立按钮的导出 CSS 会隐藏 Quartz 署名，导入的完整页脚仍保留署名。
 
 **外链图标**：在组件属性的「按钮外观」选择「外链图标」，填写 HTTPS 图片直链（例如 `https://example.com/icon.svg`），而非图标网站的网页地址。支持浏览器可显示的 PNG、JPEG、WebP、SVG、ICO 等；外链 SVG 仅作为图片显示，不插入页面源码或执行脚本。编辑器不验证远端内容，实际支持情况取决于服务器响应和浏览器。只有主动选择并填写外链时，预览才会请求该图标服务（不发送页面 Referrer）；失败时预览恢复按钮名称。部署后也需要联网，并可能受防盗链或站点 CSP 限制。外链仅写入单独导出的 `custom.scss`，仍须复制样式；YAML 不保存此选择。部署后的 CSS 图片加载失败不会自动恢复文字，请确认图标链接可靠，或改用本地图片。
 
@@ -119,13 +125,13 @@ The preview spans the workspace and uses legible system fonts. Region labels inc
 
 Button appearance offers text, local images and external icon URLs; the built-in Icon option has been removed. For an external icon, choose **Button appearance → External icon URL** and enter a direct HTTPS image URL, including SVG or ICO. The panel links to [Appicons](https://appicons.co) for finding icons; paste a direct image URL rather than a web page. This is a resource recommendation, not an automatic integration or API request. SVG stays an image, never inline executable markup. Only explicit image opt-in contacts the image host; preview uses no referrer and falls back to the label on failure. The deployed CSS still depends on the host and site CSP and cannot restore text automatically on image failure. Copy the separate `custom.scss` export; YAML does not store appearance. Local images still work offline.
 
-Native only: use the yellow **New button · Footer** strip in Component tray to create independent native Footer instances, one button each, or add repeatable Spacers. Each instance has its own placement and visibility. Button settings are flat: no nested add/remove/reorder controls. Create another instance for another button. Imported multi-link Footers remain read-only and unchanged; arrange one link per Footer in YAML before reimporting to edit them here. Choose text, external icons or a local PNG/JPEG/WebP image (up to 1 MiB and 2048 × 2048; no SVG), plus native/text/outline/filled/pill styles. Local images embed in CSS without external requests; meaningful link labels remain accessible. Copy the separate stylesheet into the existing `quartz/styles/custom.scss` (replace earlier editor-generated rules), then rebuild/deploy normally. YAML alone cannot apply appearances. Identical target URLs share appearances; choices are session-only and not restored from YAML. Native Quartz credits remain visible per instance, and excluding `footer` affects all instances. No new plugin or unsupported YAML option is introduced.
+Native only: use the yellow **New button · Footer** strip in Component tray to create independent native Footer instances, one button each, or add repeatable full footers and Spacers. Each instance has its own placement and visibility. New full-footer and independent-button previews hide the Quartz credit; imported native Footers retain it. Independent buttons stay flat; full footers support multiple links. Choose text, external icons or a local PNG/JPEG/WebP image (up to 1 MiB and 2048 × 2048; no SVG), plus native/text/outline/filled/pill styles. Local images embed in CSS without external requests; meaningful link labels remain accessible. Copy the separate stylesheet into the existing `quartz/styles/custom.scss` (replace earlier editor-generated rules), then rebuild/deploy normally. YAML alone cannot apply appearances. Identical target URLs share appearances; choices are session-only and not restored from YAML. No new plugin or unsupported YAML option is introduced.
 
 ## 多个占位间隔与组内布局
 
-效果预览中，面板打开时会用醒目的虚线框标出当前选中的组件；关闭面板恢复干净预览，禁用或当前条件下不可见的组件不显示框。选中框不会改变布局或导出配置。新增 Footer 的「保存」与红色「删除」按钮在属性面板底部同一行，左侧保存、右侧删除，等宽排列；Spacer 保留底部全宽删除按钮。删除仅适用于本次新增的组件，导入的组件仍通过禁用控制。
+效果预览中，面板打开时会用醒目的虚线框标出当前选中的组件；关闭面板恢复干净预览，禁用或当前条件下不可见的组件不显示框。选中框不会改变布局或导出配置。新增独立按钮的「保存」与红色「删除」按钮在属性面板底部同一行，左侧保存、右侧删除，等宽排列；新增完整页脚自动保存链接，与 Spacer 一样保留底部全宽删除按钮。删除仅适用于本次新增的组件，导入的组件仍通过禁用控制。
 
-While a panel is open, Draft preview outlines the selected visible component with a scale-compensated dashed box. Closing the panel removes the outline; disabled or hidden selections have no box. Selection does not change layout or YAML. New Footer properties end with one equal-width action row: Save on the left and red Delete on the right. Spacers keep their full-width Delete button at the bottom. Only newly created instances can be deleted; imported components can still be disabled, not deleted.
+While a panel is open, Draft preview outlines the selected visible component with a scale-compensated dashed box. Closing the panel removes the outline; disabled or hidden selections have no box. Selection does not change layout or YAML. New independent button properties end with one equal-width action row: Save on the left and red Delete on the right. New full footers save links automatically and, like Spacers, keep a full-width Delete button at the bottom. Only newly created instances can be deleted; imported components can still be disabled, not deleted.
 
 组件托盘顶部可重复创建原生 Spacer，每个实例独立设置位置、启用状态、条件及分组。本次新增的实例可以移除；导入的实例仍通过禁用控制。页面类型排除 `spacer` 会影响所有实例。
 

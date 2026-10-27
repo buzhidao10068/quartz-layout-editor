@@ -10,6 +10,66 @@ const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', impor
 const localPath = new URL('../fixtures/local/real-config.yaml', import.meta.url);
 const entryNamed = (state, name) => state.entries.find(entry => entry.shortName === name);
 
+test('full native footers accept multiple or no links while independent buttons stay single-link', () => {
+  const state = core.load(defaultRaw);
+  state.renumber = false;
+  const original = entryNamed(state, 'footer');
+  const originalSpan = plain(original.span);
+  const footer = core.addFooter(state, 'footer');
+  const second = core.addFooter(state, 'footer');
+  const button = core.addFooter(state);
+  const spacer = core.addSpacer(state);
+  const rows = [{ label: 'About <&"', url: '/about' }, { label: 'GitHub', url: 'https://github.com/example' }];
+  assert.equal(footer.footerKind, 'footer');
+  core.updateFooterLinks(state, footer.id, rows);
+  core.updateFooterLinks(state, second.id, []);
+  core.place(state, footer.id, 'header', undefined, 'footer-row');
+  core.place(state, second.id, 'right');
+  core.updateEntry(state, second.id, { enabled: false });
+  core.place(state, spacer.id, 'afterBody');
+  assert.throws(() => core.updateFooterLinks(state, button.id, rows), /只能包含一个按钮/);
+  const beforeInvalid = core.generate(state);
+  for (const invalid of [[{ label: 'Bad', url: 'javascript:alert(1)' }], [{ label: 'Same', url: '/' }, { label: 'Same', url: '/two' }], [{ label: '__proto__', url: '/' }]]) {
+    assert.throws(() => core.updateFooterLinks(state, footer.id, invalid));
+    assert.equal(core.generate(state), beforeInvalid);
+  }
+  const output = core.generate(state);
+  const loaded = core.load(output);
+  assert.equal(core.generate(loaded), output);
+  assert.doesNotMatch(output, /footerKind|full-footer|buttonStyle/);
+  assert.deepEqual(plain(original.span), originalSpan);
+  assert.equal(new Set([footer.id, second.id, button.id, spacer.id]).size, 4);
+  const imported = loaded.entries.find(entry => entry.layout?.group === 'footer-row');
+  assert.deepEqual(plain(imported.footerLinks), rows);
+  assert.equal(loaded.entries.find(entry => entry.layout?.position === 'right' && entry.footerLinks?.length === 0).enabled, false);
+  core.updateFooterLinks(loaded, imported.id, [...rows, { label: 'Contact', url: 'mailto:hello@example.org' }]);
+  assert.ok(independent(output, core.generate(loaded)).every(path => path.startsWith(`plugins.${imported.id}.options.links`)));
+  core.removeAddedFooter(state, footer.id);
+  core.removeAddedFooter(state, second.id);
+  core.removeAddedFooter(state, button.id);
+  core.removeAddedSpacer(state, spacer.id);
+  delete state.groups['footer-row'];
+  assert.equal(core.generate(state), defaultRaw);
+  assert.throws(() => core.removeAddedFooter(state, original.id));
+});
+
+test('imported multi-link footer editing preserves opaque options and composes with layout and enabled', () => {
+  const source = core.CATALOG.find(entry => entry.displayName === 'Footer').source;
+  const raw = `configuration:\n  pageTitle: Test\nplugins:\n  - source: "${source}"\n    options:\n      opaque: 'keep unchanged' # untouched\n      links:\n        GitHub: https://github.com/example\n        Discord: https://discord.gg/example\n`;
+  const state = core.load(raw);
+  const footer = state.entries[0];
+  assert.equal(footer.footerKind, 'footer');
+  assert.equal(core.generate(state), raw);
+  core.updateFooterLinks(state, footer.id, [{ label: 'About', url: '/about' }, { label: 'Home', url: '/' }]);
+  core.updateEntry(state, footer.id, { enabled: false, layout: { position: 'afterBody', priority: 10 } });
+  const output = core.generate(state);
+  assert.match(output, /opaque: 'keep unchanged' # untouched/);
+  assert.ok(independent(raw, output).every(path => /^plugins\.0\.(options\.links|enabled|layout)/.test(path)));
+  assert.equal(core.generate(core.load(output)), output);
+  core.updateFooterLinks(state, footer.id, []);
+  assert.equal(core.load(core.generate(state)).entries[0].footerLinks.length, 0);
+});
+
 test('new independent Footer instances require exactly one link without mutating on rejection', () => {
   const state = core.load(defaultRaw);
   const entry = core.addFooter(state);
@@ -146,11 +206,32 @@ test('native custom.scss styles are separate, target actual Footer markup and es
     assert.match(css, /footer > ul > li > a\[href=/);
     assert.match(css, /var\(--secondary\)/);
     assert.match(css, /:focus-visible/);
-    assert.doesNotMatch(css, /<|\$\{|display: none|undefined/);
+    assert.doesNotMatch(css, /<|\$\{|undefined/);
     assert.equal(core.generate(state), yaml);
   }
-  assert.equal(core.footerStyles(state, { [url]: 'x; color:red', '/missing': 'pill' }), '');
-  assert.equal(core.footerStyles(state, {}), '');
+  assert.match(core.footerStyles(state, { [url]: 'x; color:red', '/missing': 'pill' }), /footer:has\(> ul > li:only-child/);
+  assert.match(core.footerStyles(state, {}), /footer:has\(> ul > li:only-child/);
+});
+
+test('new Footer buttons and full footers hide credits while imported full footers keep them', () => {
+  const state = core.load(defaultRaw);
+  const button = core.addFooter(state);
+  core.updateFooterLinks(state, button.id, [{ label: '独立按钮', url: '/independent' }]);
+  const full = core.addFooter(state, 'footer');
+  core.updateFooterLinks(state, full.id, [
+    { label: 'About', url: '/new-about' },
+    { label: 'Contact', url: '/new-contact' }
+  ]);
+  const css = core.footerStyles(state, {});
+  assert.match(css, /footer:has\(> ul > li:only-child > a\[href="\/independent"\]\) > p \{ display: none; \}/);
+  assert.match(css, /nth-child\(1\).*\/new-about.*nth-child\(2\).*\/new-contact/);
+  assert.match(css, /not\(:has\(> ul > li:nth-child\(3\)\)\) > p \{ display: none; \}/);
+  assert.doesNotMatch(css, /<|\$\{|undefined/);
+  const emptyFull = core.addFooter(state, 'footer');
+  core.updateFooterLinks(state, emptyFull.id, []);
+  assert.match(core.footerStyles(state, {}), /footer:has\(> ul:empty\) > p \{ display: none; \}/);
+  const importedLink = state.entries.find(entry => entry.footerKind === 'footer' && !entry.added).footerLinks[0].url;
+  assert.equal(core.footerStyles(state, { [importedLink]: 'pill' }).includes(`href="${importedLink}"]) > p`), false);
 });
 
 test('footer default contains only the project GitHub link and preserves no-op bytes', () => {
