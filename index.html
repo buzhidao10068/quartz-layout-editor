@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quartz Layout Editor 0.3 · 布局编辑器</title>
+<title>Quartz Layout Editor 0.4 · 布局编辑器</title>
 <meta name="description" content="完全离线的 Quartz v5 布局编辑器：拖动、调整、复制配置。">
 <style>
   :root {
@@ -86,7 +86,7 @@
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   .skip-link { position: fixed; top: -80px; left: 16px; padding: 10px 16px; background: var(--surface); z-index: 100; color: var(--teal); }
   .skip-link:focus { top: 12px; }
-  .app-shell { max-width: 1820px; padding: 30px 32px 86px; margin: auto; }
+  .app-shell { max-width: 1820px; padding: 0 32px 86px; margin: auto; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
   .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
   .brand-mark { width: 48px; height: 48px; border-radius: 15px; background: var(--teal); color: var(--surface); display: grid; grid-template-columns: repeat(2, 9px); grid-template-rows: repeat(2, 9px); gap: 4px; place-content: center; transform: rotate(-4deg); flex: 0 0 auto; box-shadow: var(--shadow); }
@@ -98,6 +98,10 @@
   .primary { background: var(--teal-strong); color: var(--surface); border-color: var(--teal-strong); }
   .primary:hover:not(:disabled) { background: var(--teal); color: var(--surface); }
   .quiet { background: transparent; }
+  .component-delete { display: block; width: 100%; min-height: 0; padding: 8px 10px; border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+  .component-delete:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+  .component-actions { display: flex; gap: 10px; width: 100%; }
+  .component-actions > button { flex: 1 1 0; width: 0; min-width: 0; min-height: 0; padding: 8px 10px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 650; background: var(--teal-soft); color: var(--teal-strong); overflow-wrap: anywhere; }
   .pill.neutral { background: var(--surface-muted); color: var(--muted); }
   .pill.warn { background: var(--amber-soft); color: var(--amber); }
@@ -124,6 +128,16 @@
   .footer-components { display: grid; gap: 8px; padding: 8px; border: 1px dashed var(--teal); border-radius: 10px; margin-top: 8px; }
   .footer-link-card { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); overflow-wrap: anywhere; }
   .footer-link-card .toolbar { margin-top: 8px; }
+  .component-create { margin-bottom: 14px; display: grid; gap: 6px; }
+  .tray-strip.drag-grip { display: block; width: 100%; min-width: 0; height: 36px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--teal); border-left-width: 4px; border-radius: 7px; background: var(--teal-soft); color: var(--teal-strong); text-align: left; font-size: 12px; font-weight: 650; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: none; user-select: none; }
+  .tray-strip:active { cursor: grabbing; }
+  .tray-strip.tray-create-footer { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+  .tray-strip.tray-create-spacer { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+  #component-tray .tray-card { padding: 0; border: 0; border-radius: 7px; background: transparent; box-shadow: none; }
+  #component-tray .tray-card.selected { box-shadow: 0 0 0 2px var(--teal); }
+  #component-tray .drop-insert { height: 6px; min-height: 6px; }
+  .footer-visual { width: 24px; height: 24px; object-fit: contain; font-size: 24px; line-height: 1; flex: 0 0 auto; }
+  :root { overflow-anchor: none; }
   .effect-footer-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
   .effect-footer { --secondary: var(--teal-strong); --light: var(--surface); --bodyFont: inherit; }
   .effect-footer-links button { color: var(--teal-strong); font: inherit; overflow-wrap: anywhere; max-width: 100%; background: transparent; border: 0; border-radius: 0; padding: 0; }
@@ -178,10 +192,8 @@
   .card-name { display: block; padding: 0; min-height: 0; border: 0; background: transparent; text-align: left; line-height: 1.45; font-size: 12px; font-weight: 750; overflow-wrap: anywhere; }
   .card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
   .card-badges .pill { font-size: 9px; padding: 1px 6px; }
-  .card-controls { display: grid; grid-template-columns: 28px 28px minmax(0, 1fr); gap: 4px; margin-top: 9px; }
-  .card-controls button { min-height: 29px; padding: 0; font-size: 13px; }
-  .card-controls select, .card-group-select { font-size: 10px; min-height: 29px; padding: 3px 5px; }
-  .card-group-select { margin-top: 5px; }
+  .card-controls { display: grid; grid-template-columns: minmax(0, 1fr); margin-top: 9px; }
+  .card-controls select { font-size: 10px; min-height: 29px; padding: 3px 5px; }
   .group-container { background: var(--teal-soft); border: 1px solid var(--line); border-radius: 11px; padding: 8px; }
   .group-container > summary { padding: 2px; }
   .group-head { display: inline-flex; align-items: center; justify-content: space-between; gap: 5px; width: calc(100% - 20px); vertical-align: middle; }
@@ -229,9 +241,9 @@
   .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-top: 1px solid var(--line); flex-wrap: wrap; }
   @media (min-width: 1600px) { .workspace { grid-template-columns: 250px minmax(0, 1fr) 320px; } }
   @media (max-width: 1320px) { .workspace { grid-template-columns: 210px minmax(0, 1fr); } .right-rail { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 980px) { .app-shell { padding: 22px 18px 86px; } .workspace { grid-template-columns: minmax(0, 1fr); } .left-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .right-rail { grid-column: auto; } .topbar { align-items: flex-start; } }
+  @media (max-width: 980px) { .app-shell { padding: 0 18px 86px; } .workspace { grid-template-columns: minmax(0, 1fr); } .left-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .right-rail { grid-column: auto; } .topbar { align-items: flex-start; } }
   @media (max-width: 680px) {
-    .app-shell { padding: 18px 12px 100px; }
+    .app-shell { padding: 0 12px 100px; }
     .topbar { flex-direction: column; gap: 14px; margin-bottom: 18px; }
     .topbar > .toolbar { width: 100%; justify-content: flex-end; }
     .brand-mark { width: 42px; height: 42px; }
@@ -242,9 +254,8 @@
     .left-rail, .right-rail { grid-template-columns: minmax(0, 1fr); }
     .frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "center" "right" "footer"; padding: 10px; gap: 10px; }
     .page-body { min-height: 210px; }
-    .card-controls { grid-template-columns: 34px 34px minmax(0, 1fr); }
     .card-name { font-size: 13px; }
-    .card-controls select, .card-group-select { font-size: 12px; min-height: 34px; }
+    .card-controls select { font-size: 12px; min-height: 34px; }
     .footer-bar { flex-direction: column; align-items: flex-start; gap: 5px; }
     dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
     .modal-head, .modal-body, .modal-footer { padding: 13px; }
@@ -266,7 +277,8 @@
   @media (max-width: 900px) { .guide-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (prefers-reduced-motion: no-preference) { button, .card { transition: border-color .14s, background-color .14s, box-shadow .14s; } }
   [hidden] { display: none !important; }
-  body { padding-block: calc(var(--tool-dock-height, 54px) + 20px); }
+  body { padding: 0 0 calc(var(--tool-dock-height, 54px) + 20px); }
+  :root[data-tool-dock="top"] .app-shell { padding-top: calc(var(--tool-dock-height, 54px) + 20px); }
   :root { scroll-padding-top: calc(var(--tool-dock-height, 54px) + 20px); }
   .board-modes { position: fixed; bottom: max(8px, env(safe-area-inset-bottom)); right: max(8px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); z-index: 45; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 5fr) auto; gap: 5px; padding: 6px; width: auto; max-width: 1060px; margin: 0 auto; max-height: calc(100dvh - 24px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 8px 30px #14292330; }
   :root[data-tool-dock="top"] .board-modes { top: max(8px, env(safe-area-inset-top)); bottom: auto; }
@@ -284,7 +296,7 @@
   .panel.is-pinned > summary { display: block; list-style: none; padding-right: 48px; }
   .panel.is-pinned > summary::-webkit-details-marker { display: none; }
   .panel.is-pinned > .panel-body { max-height: var(--tool-body-height, calc(100dvh - 110px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-padding-block: 12px; }
-  .tool-panel-close { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 2px; font-size: 20px; }
+  .tool-panel-close { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; display: grid; place-items: center; font-size: 20px; pointer-events: none; }
   @media (max-width: 1100px), (max-height: 560px) {
     .board-modes { max-width: 680px; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; }
     .board-modes button { min-height: 36px; padding: 5px; }
@@ -317,6 +329,7 @@
   .effect-page[data-effect-regions="true"]:not([data-effect-viewport="desktop"]) .effect-slot-right, .effect-page[data-effect-regions="true"][data-effect-viewport="mobile"] .effect-slot-left { flex-wrap: wrap; }
   .effect-empty { font-size: 15px; color: var(--ink); padding: 8px 0; }
   .effect-component { min-width: 0; overflow-wrap: anywhere; }
+  .effect-component.effect-selected { outline: var(--effect-outline, 3px) dashed var(--teal-strong); outline-offset: calc(-1 * var(--effect-outline, 3px)); border-radius: 4px; }
   .effect-component + .effect-component { margin-top: 8px; }
   .effect-group { display: flex; min-width: 0; align-items: center; }
   .effect-group-member { min-width: 0; }
@@ -380,7 +393,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 C5.37 0 0 5.37 0 12 C0 17.3 3.44 21.8 8.2 23.39 C8.8 23.5 9.02 23.13 9.02 22.81 V20.58 C5.68 21.3 4.98 19.16 4.98 19.16 C4.44 17.77 3.65 17.4 3.65 17.4 C2.56 16.65 3.73 16.67 3.73 16.67 C4.93 16.75 5.56 17.9 5.56 17.9 C6.63 19.73 8.37 19.2 9.05 18.9 C9.16 18.12 9.47 17.59 9.81 17.29 C7.14 16.99 4.34 15.96 4.34 11.36 C4.34 10.05 4.81 8.98 5.58 8.14 C5.46 7.84 5.04 6.62 5.7 4.97 C5.7 4.97 6.71 4.65 9 6.2 C9.96 5.93 10.98 5.8 12 5.8 C13.02 5.8 14.04 5.93 15 6.2 C17.29 4.65 18.3 4.97 18.3 4.97 C18.96 6.62 18.54 7.84 18.42 8.14 C19.19 8.98 19.66 10.05 19.66 11.36 C19.66 15.97 16.85 16.99 14.17 17.29 C14.6 17.66 14.99 18.39 14.99 19.51 V22.81 C14.99 23.13 15.2 23.5 15.81 23.39 C20.57 21.8 24 17.3 24 12 C24 5.37 18.63 0 12 0 Z"/></svg>
           <span class="sr-only" data-i18n="projectLink">项目地址 · GitHub ↗</span>
         </a>
-        <span class="pill neutral" data-i18n="offline">0.3 · 离线编辑</span><label class="language-control" for="language-select"><span data-i18n="language">界面语言</span><select id="language-select"><option value="zh-CN">中文</option><option value="en">English</option></select></label><button id="theme-toggle" type="button" data-action="theme" data-i18n="theme" data-i18n-aria="themeLabel">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate" data-i18n="generate">生成配置</button>
+        <span class="pill neutral" data-i18n="offline">0.4 · 离线编辑</span><label class="language-control" for="language-select"><span data-i18n="language">界面语言</span><select id="language-select"><option value="zh-CN">中文</option><option value="en">English</option></select></label><button id="theme-toggle" type="button" data-action="theme" data-i18n="theme" data-i18n-aria="themeLabel">切换主题</button><button id="generate-config" class="primary" type="button" data-action="generate" data-i18n="generate">生成配置</button>
       </div>
     </header>
     <section id="guide-panel" class="panel guide-panel" data-i18n-aria="guideLabel"></section>
@@ -876,6 +889,7 @@ const QuartzEditor = (() => {
     const entry = state.entries.find(item => item.id === id);
     if (!entry?.footerMeta || entry.footerMeta.error) fail("此 footer links 结构只读，请先在 YAML 中改为块映射");
     validateFooterLinks(rows);
+    if (entry.added && rows.length !== 1) fail("每个独立按钮组件只能包含一个按钮，请新建独立按钮组件");
     entry.footerLinks = clone(rows);
     state.dirty = true;
   }
@@ -903,6 +917,48 @@ const QuartzEditor = (() => {
     state.dirty = true;
   }
 
+  function addSpacer(state) {
+    const catalog = CATALOG.find(component => component.displayName === "Spacer");
+    const existing = state.entries.find(entry => entry.shortName === "spacer");
+    const id = Math.max(-1, ...state.entries.map(entry => entry.id)) + 1;
+    const position = catalog.defaultPosition;
+    const priority = Math.max(0, ...slotEntries(state, position).map(item => item.priority)) + 10;
+    const entry = { id, source: existing?.source || catalog.source, shortName: "spacer", catalog,
+      added: true, enabled: true, enabledLine: null, span: null, layoutSpan: null,
+      layout: { position, priority }, original: { enabled: true, layout: null } };
+    state.entries.push(entry);
+    state.selected = id;
+    state.dirty = true;
+    return entry;
+  }
+
+  function removeAddedSpacer(state, id) {
+    const index = state.entries.findIndex(entry => entry.id === id && entry.added && entry.shortName === "spacer");
+    if (index < 0) fail("组件不存在");
+    state.entries.splice(index, 1);
+    if (state.selected === id) state.selected = null;
+    state.dirty = true;
+  }
+
+  const FOOTER_ICONS = { link: "↗", home: "⌂", star: "★", heart: "♥", mail: "✉", book: "▤" };
+  function validFooterImage(value) {
+    if (typeof value !== "string" || value.length > 1400000) return false;
+    return /^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/.test(value)
+      || /^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(value)
+      || /^data:image\/webp;base64,UklGR[A-Za-z0-9+/]*={0,2}$/.test(value);
+  }
+  function validFooterIconUrl(value) {
+    if (typeof value !== "string" || value.length > 4096 || /[\s\u0000-\u001f\u007f]/.test(value)) return false;
+    const match = /^https:\/\/([a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?([/?#][a-zA-Z0-9._~:/?#[\]@!$&()*+,;=%-]*)?$/.exec(value);
+    return Boolean(match && match[1].length <= 253 && match[1].split(".").every(label => /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(label)) && (!match[2] || Number(match[2]) > 0 && Number(match[2]) <= 65535));
+  }
+  function footerAppearance(value) {
+    const input = typeof value === "string" ? { style: value } : value || {};
+    return { style: Object.hasOwn(FOOTER_STYLES, input.style) ? input.style : "",
+      icon: (!input.mode || input.mode === "icon") && Object.hasOwn(FOOTER_ICONS, input.icon) ? input.icon : "",
+      image: input.mode === "remote" && validFooterIconUrl(input.remoteUrl) ? input.remoteUrl : (!input.mode || input.mode === "image") && validFooterImage(input.image) ? input.image : "" };
+  }
+
   const FOOTER_STYLES = {
     link: "background: transparent; color: var(--secondary); border-color: transparent; border-radius: 0;",
     outline: "background: transparent; color: var(--secondary); border-color: var(--secondary); border-radius: .35rem;",
@@ -913,11 +969,13 @@ const QuartzEditor = (() => {
     const urls = new Set(state.entries.filter(entry => entry.footerMeta && !entry.footerMeta.error).flatMap(entry => entry.footerLinks.map(row => row.url)));
     const quote = value => '"' + Array.from(value, character => /[a-zA-Z0-9/_:.#?=&%@+-]/.test(character) ? character : `\\${character.codePointAt(0).toString(16)} `).join("") + '"';
     const rules = [];
-    for (const [url, style] of Object.entries(preferences)) {
-      if (!urls.has(url) || !Object.hasOwn(FOOTER_STYLES, style)) continue;
+    for (const [url, preference] of Object.entries(preferences)) {
+      const { style, icon, image } = footerAppearance(preference);
+      if (!urls.has(url) || !(style || icon || image)) continue;
       const link = `footer > ul > li > a[href=${quote(url)}]`;
       const owner = `footer:has(> ul > li > a[href=${quote(url)}])`;
-      rules.push(`${owner} { opacity: 1; }\n${owner} > ul { flex-wrap: wrap; margin-top: 0; gap: .65rem; }\n${link} { display: inline-flex; align-items: center; padding: .45rem .85rem; border: 1px solid; font-family: var(--bodyFont); font-weight: 600; text-decoration: none; line-height: 1.4; max-width: 100%; overflow-wrap: anywhere; ${FOOTER_STYLES[style]} }\n${link}:hover { filter: brightness(.9); }\n${link}:focus-visible { outline: 2px solid var(--tertiary); outline-offset: 3px; }`);
+      rules.push(`${owner} { opacity: 1; }\n${owner} > ul { flex-wrap: wrap; margin-top: 0; gap: .65rem; }\n${link} { display: inline-flex; align-items: center; padding: .45rem .85rem; border: 1px solid; font-family: var(--bodyFont); font-weight: 600; text-decoration: none; line-height: 1.4; max-width: 100%; overflow-wrap: anywhere; ${FOOTER_STYLES[style || "link"]} }\n${link}:hover { filter: brightness(.9); }\n${link}:focus-visible { outline: 2px solid var(--tertiary); outline-offset: 3px; }`);
+      if (image || icon) rules.push(`${link} { font-size: 0; min-width: 2.75rem; min-height: 2.75rem; justify-content: center; }\n${link}::before { content: ${image ? '""' : quote(FOOTER_ICONS[icon])}; display: inline-block; width: 1.5rem; height: 1.5rem; font-size: 1.5rem; line-height: 1;${image ? ` background: url(${validFooterImage(image) ? '"' + image + '"' : quote(image)}) center / contain no-repeat;` : ""} }`);
     }
     return rules.join("\n\n");
   }
@@ -1178,6 +1236,7 @@ const QuartzEditor = (() => {
     const added = state.entries.filter(entry => entry.added);
     if (added.length) {
       const lines = added.flatMap(entry => {
+        if (entry.shortName === "spacer") return [`  - source: ${JSON.stringify(entry.source)}`, `    enabled: ${entry.enabled}`, ...emitLayoutBlock(entry)];
         validateFooterLinks(entry.footerLinks);
         return [`  - source: ${JSON.stringify(entry.source)}`, `    enabled: ${entry.enabled}`, "    options:",
           ...(entry.footerLinks.length ? ["      links:", ...entry.footerLinks.map(row => `        ${JSON.stringify(row.label)}: ${JSON.stringify(row.url)}`)] : ["      links: {}"]),
@@ -1394,18 +1453,47 @@ const QuartzEditor = (() => {
   }
   return { POSITIONS, PAGE_TYPES, CATALOG, normalize, splitTopLevel, parsePlugins, parseLayoutSection,
     load, originalText, effectiveLayout, emitLayoutBlock, emitLayoutSection, generate, diffLines,
-    slotEntries, resolveDraftLayout, updateEntry, updatePageType, updateFooterLinks, addFooter, removeAddedFooter, FOOTER_STYLES, footerStyles, place, move };
+    slotEntries, resolveDraftLayout, updateEntry, updatePageType, updateFooterLinks, addFooter, removeAddedFooter, addSpacer, removeAddedSpacer, FOOTER_STYLES, FOOTER_ICONS, validFooterImage, validFooterIconUrl, footerAppearance, footerStyles, place, move };
 })();
 </script>
 <script id="quartz-editor-ui">
 (() => {
   "use strict";
   const COPY = {
+    createComponents: ["新增组件", "Create components"],
+    createComponentsHelp: ["拖入布局即可新建并启用；点击仅创建未启用组件，可先设置属性，再勾选启用或拖入布局。可重复创建，无需额外插件。", "Drag into the layout to create and enable. Clicking creates a disabled component: configure it, then check Enable or drag it into the layout. Repeatable, with no additional plugin."],
+    trayNewFooter: ["新增独立按钮 · Footer", "New button · Footer"], trayNewSpacer: ["新增占位间隔 · Spacer", "New spacing · Spacer"],
+    spacerInstanceAdd: ["新增占位间隔（原生 Spacer）", "Add spacing (native Spacer)"],
+    spacerInstanceHelp: ["可创建多个 Spacer，各自设置位置、显示条件和分组。组内可设置 basis 留出固定主轴间隔；未分组时使用原生 Spacer 默认行为。页面排除 spacer 会影响所有实例。", "Create multiple Spacers with independent positions, visibility and groups. In a group, use basis for a fixed main-axis gap; ungrouped Spacers use native defaults. Excluding spacer affects every instance."],
+    spacerInstanceUpdated: ["原生 Spacer 实例已更新。", "Native Spacer instances updated."],
+    footerVisual: ["按钮外观（单独导出样式）", "Button appearance (separate stylesheet)"],
+    footerVisualText: ["文字", "Text"], footerVisualIcon: ["图标", "Icon"], footerVisualImage: ["本地图片", "Local image"],
+    footerVisualRemote: ["外链图标", "External icon URL"],
+    footerRemoteUrl: ["图标图片直链（HTTPS）", "Icon image URL (HTTPS)"],
+    footerIconResource: ["可以到 Appicons 查找图标：", "Find icons at Appicons:"],
+    footerRemoteHelp: ["粘贴图片直链，而非网页地址，支持 PNG、JPEG、WebP、SVG、ICO 等浏览器图片格式。预览和部署后会请求该图标服务，需联网；可能受防盗链或站点 CSP 限制，预览失败时显示按钮名称。外链仅导出到 custom.scss，不写入 YAML，重新载入后需重新填写。", "Paste a direct image URL, not a web page. Browser image formats such as PNG, JPEG, WebP, SVG and ICO are supported. Preview and deployment contact that host and require internet; hotlink protection or site CSP may block it. Preview falls back to the button label on failure. Exported only to custom.scss, not YAML; enter again after reloading."],
+    footerRemoteInvalid: ["请输入有效的 HTTPS 图标直链，不允许账号密码、空格、引号或脚本协议。", "Enter a valid HTTPS icon URL without credentials, spaces, quotes or script protocols."],
+    footerIcon: ["选择图标", "Choose icon"], footerImage: ["选择图片（PNG / JPEG / WebP）", "Choose image (PNG / JPEG / WebP)"],
+    iconLink: ["链接", "Link"], iconHome: ["首页", "Home"], iconStar: ["星标", "Star"], iconHeart: ["喜欢", "Heart"], iconMail: ["邮件", "Mail"], iconBook: ["书籍", "Book"],
+    footerImageHelp: ["图片不超过 1 MiB、2048 × 2048，嵌入导出的 custom.scss，无需外部图床。名称仍作为无障碍文字，请勿留空。图标和图片不写入 YAML，重新载入后需重新选择。", "Up to 1 MiB and 2048 × 2048, embedded in exported custom.scss without external hosting. Keep a meaningful label for accessibility. Icons and images are not YAML options; choose them again after reloading."],
+    footerImageMissing: ["尚未选择图片，暂显示文字。", "No image selected; showing text for now."],
+    footerImageInvalid: ["请选择有效的 PNG、JPEG 或 WebP 图片，大小不超过 1 MiB，尺寸不超过 2048 × 2048。", "Choose a valid PNG, JPEG or WebP image, up to 1 MiB and 2048 × 2048."],
+    groupOptionsHelp: ["这些属性仅对已分组组件生效。grow 默认否、shrink 默认是、basis 默认 auto、order 默认 0、align 默认 center。可在效果预览立即查看。", "These options apply only to grouped components. Defaults: grow false, shrink true, basis auto, order 0, align center. Changes appear immediately in Draft preview."],
+    basisHelp: ["沿组的主轴指定初始尺寸：横向为宽度，纵向为高度。示例 auto、0px、160px、12rem、30%、calc(50% - 1rem)。允许收缩时最终尺寸可能更小。", "Initial size along the group's main axis: width for rows, height for columns. Examples: auto, 0px, 160px, 12rem, 30%, calc(50% - 1rem). Shrink may reduce the final size."],
+    basisInvalid: ["basis 需为有效的非负 CSS 尺寸，如 auto、160px、30% 或 calc(50% - 1rem)，不能只填写数字。", "Use a valid non-negative CSS basis such as auto, 160px, 30% or calc(50% - 1rem), not a bare number."],
+    growHelp: ["是：分配剩余主轴空间；否：不额外扩展。", "True: share remaining main-axis space. False: do not grow."],
+    shrinkHelp: ["是：空间不足时收缩；否：保留基础尺寸，可能溢出或需开启组换行。", "True: shrink when space is limited. False: retain the base size, which may overflow or require group wrapping."],
+    orderHelp: ["数值较小者先显示，可为负数；不改变 YAML 列表顺序。", "Lower values appear first, including negatives; the YAML list order stays unchanged."],
+    alignHelp: ["控制组件在交叉轴的对齐，stretch 会拉伸；方向由分组设置决定。", "Align on the cross axis; stretch fills that axis. The group direction determines the axis."],
+    justifyHelp: ["原生 Quartz 输出 justify-self，但浏览器在 Flex 布局中忽略此属性；此处保留兼容配置，不会假装有视觉效果。主轴间距请用分组 gap、grow 或 Spacer。", "Native Quartz emits justify-self, which browsers ignore in Flex layout. This preserves configuration compatibility, not a simulated visual effect. Use group gap, grow or Spacer for main-axis spacing."],
     dockToTop: ["移到顶部 ↑", "Move to top ↑"],
     dockToBottom: ["移到底部 ↓", "Move to bottom ↓"],
     panelTools: ["常驻布局工具", "Persistent layout tools"],
     closeToolPanel: ["收起工具面板", "Close tool panel"],
-    footerComponents: ["自定义按钮组件 · footer links", "Custom button components · footer links"],
+    footerComponents: ["按钮设置 · 原生 Footer", "Button settings · native Footer"],
+    chooseComponent: ["选择组件（不改变启用状态）", "Choose component (keeps enabled state)"],
+    footerSingleHelp: ["每个独立按钮组件只有一个按钮，直接设置名称、目标和外观。需要另一个按钮，请到组件托盘新增独立按钮，不在组件内嵌套。", "Each independent component has one button. Edit its label, target and appearance directly. Create another independent button in Component tray instead of nesting buttons here."],
+    footerLegacyHelp: ["导入的 Footer 包含多个链接，已保留原配置并设为只读，不会自动删除或拆分。请在 YAML 中整理为每个 Footer 一个链接，再导入；新按钮请在组件托盘单独创建。", "This imported Footer has multiple links. Its configuration is preserved read-only, without deleting or splitting links. Arrange one link per Footer in YAML and reimport; create new independent buttons in Component tray."],
     footerSpecial: ["特殊子组件 · footer links", "Special child · footer links"],
     footerLinksHelp: ["按钮名称就是读者看到的文字，目标填写页面路径（如 /about、/notes/start）或完整网址。按钮随页脚组件一起移动、启用或隐藏，不能独立拖到其他槽位；输出到 footer.options.links，不会添加新插件。子目录部署时请包含站点前缀，并在部署后验证路径。", "Labels are the button text. Use a page path (such as /about or /notes/start) or a full URL. Buttons move, enable and hide with Footer, not independently between slots. Output uses footer.options.links, never a new plugin. Include your site prefix for subdirectory deployments and verify paths after deployment."],
     footerLinkLabel: ["按钮名称", "Button label"], footerLinkUrl: ["目标页面 / 地址", "Target page / URL"],
@@ -1416,8 +1504,8 @@ const QuartzEditor = (() => {
     footerLinkUpdated: ["自定义按钮已更新，仅修改 footer.options.links。", "Custom buttons updated in footer.options.links only."],
     footerBuiltWith: ["使用 Quartz 构建", "Built with Quartz"],
     footerInstanceAdd: ["新增独立按钮组件（原生 Footer）", "Add independent buttons (native Footer)"],
-    footerInstanceRemove: ["移除本次新增组件", "Remove this new component"],
-    footerInstanceHelp: ["可创建多个原生 Footer 实例，分别拖到六个槽位。每个实例的按钮一起移动；想单独放置，就新建一个实例。原生 Footer 会保留 Quartz 署名；页面排除 footer 会影响所有实例。", "Create multiple native Footer instances and move each to any of the six slots. Links move together within an instance; create another instance for independent placement. Native Footer retains its Quartz credit. Excluding footer affects every instance."],
+    footerInstanceRemove: ["删除", "Delete"],
+    footerInstanceHelp: ["每个独立按钮对应一个原生 Footer 实例，可分别拖到六个槽位。需要更多按钮，请在组件托盘新增。原生 Footer 保留 Quartz 署名；页面排除 footer 会影响所有实例。", "Each independent button uses one native Footer instance, movable to any of the six slots. Add more buttons in Component tray. Native Footer retains its Quartz credit. Excluding footer affects every instance."],
     footerInstanceUpdated: ["原生 Footer 实例已更新，未引入任何新插件。", "Native Footer instances updated; no new plugin introduced."],
     footerButtonStyle: ["按钮样式", "Button style"],
     footerStyleNative: ["原生链接（不生成样式）", "Native link (no stylesheet)"],
@@ -1428,13 +1516,13 @@ const QuartzEditor = (() => {
     footerStyleCopy: ["复制按钮样式", "Copy button styles"],
     footerStyleCopied: ["按钮样式已复制，请粘贴到 custom.scss。", "Button styles copied. Paste into custom.scss."],
     footerStyleFallback: ["自动复制不可用：按钮样式已全选，请按 Ctrl+C。", "Automatic copy is unavailable. Button styles are selected; press Ctrl+C."],
-    guideFooter: ["想添加页面入口？选择页脚（Footer）编辑按钮，或点击画布上方“新增独立按钮组件”，分别放到不同位置。样式通过原生 custom.scss 导出，生成配置时须另外复制；不会添加外来插件。", "Need page shortcuts? Edit Footer links, or add independent button components above the canvas and place each separately. Styles export through native custom.scss and must be copied separately from config. No external plugin is added."],
+    guideFooter: ["想添加页面入口或间隔？打开悬浮条的“组件托盘”，在顶部“新增组件”创建独立 Footer 按钮或 Spacer，再分别设置位置。按钮支持文字、图标和本地图片，外观通过原生 custom.scss 单独导出，生成配置时须另外复制；不会添加外来插件。", "Need page shortcuts or spacing? Open Component tray in the floating bar and use Create components at the top to add native Footer buttons or Spacers, then set their positions. Buttons support text, icons and local images; copy the separately exported native custom.scss as well as YAML. No external plugin is added."],
     projectLink: ["项目地址 · GitHub ↗", "Project repository · GitHub ↗"],
-    title: ["Quartz Layout Editor 0.3 · 布局编辑器", "Quartz Layout Editor 0.3"],
+    title: ["Quartz Layout Editor 0.4 · 布局编辑器", "Quartz Layout Editor 0.4"],
     brand: ["QUARTZ · 布局工作台", "QUARTZ · LAYOUT STUDIO"],
     heading: ["让每个组件，各就其位。", "A place for every component."],
     subtitle: ["Quartz v5 布局编辑器 · 完全离线 · 不改动你的项目文件", "Quartz v5 layout editor · Fully offline · Your project files stay untouched"],
-    offline: ["0.3 · 离线编辑", "0.3 · Offline editor"], language: ["界面语言", "Interface language"],
+    offline: ["0.4 · 离线编辑", "0.4 · Offline editor"], language: ["界面语言", "Interface language"],
     theme: ["切换主题", "Toggle theme"], themeLabel: ["切换明暗主题", "Toggle light and dark theme"],
     generate: ["生成配置", "Generate config"], skip: ["跳到布局画布", "Skip to layout canvas"],
     leftRail: ["组件托盘与非布局插件", "Component tray and non-layout plugins"], canvas: ["六槽位布局画布", "Six-slot layout canvas"],
@@ -1444,7 +1532,7 @@ const QuartzEditor = (() => {
     step1Title: ["1 · 载入你的配置", "1 · Load your configuration"],
     step1: ["已有网站？选择或粘贴完整的 quartz.config.yaml。只想试用？保留内置默认配置即可。内容不会上传。", "Already have a site? Choose or paste the complete quartz.config.yaml. Just exploring? Use the bundled default configuration. Nothing is uploaded."],
     step2Title: ["2 · 移动和设置组件", "2 · Move and configure components"],
-    step2: ["拖卡片左上角握柄到目标区域，或使用 ↑ ↓ 和位置菜单。点击组件名称查看用途和属性。数字越小越靠前。", "Drag the grip at the top left of a card, or use ↑ ↓ and the position menu. Select a component name for its purpose and properties. Lower priority numbers appear first."],
+    step2: ["拖卡片左上角握柄到目标区域，或用位置菜单切换槽位。聚焦卡片后可按 Alt+方向上/下键排序。点击组件名称查看用途和属性，优先级数字越小越靠前。", "Drag the grip at the top left of a card, or use the position menu. Focus a card and press Alt+ArrowUp/ArrowDown to reorder. Select its name for properties; lower priority numbers appear first."],
     step3Title: ["3 · 生成并核对", "3 · Generate and review"],
     step3: ["点击「生成配置」，展开改动对照检查改了哪里，再复制完整 YAML。想只改当前组件，请关闭自动重排优先级。", "Select Generate config, review the line diff, then copy the complete YAML. Turn off automatic priority renumbering to keep changes limited to the moved component."],
     step4Title: ["4 · 手动应用到网站", "4 · Apply to your site manually"],
@@ -1466,13 +1554,13 @@ const QuartzEditor = (() => {
     moveUp: ["{name} 上移", "Move {name} up"], moveDown: ["{name} 下移", "Move {name} down"], moveSlot: ["移动 {name} 到槽位", "Move {name} to slot"], moveGroup: ["移动 {name} 到分组", "Move {name} to group"], noGroup: ["不分组（移出组）", "Ungrouped (leave group)"], groupOption: ["组 · {name}", "Group · {name}"],
     groupLabel: ["分组 {name}", "Group {name}"], editGroupLabel: ["编辑组 {name}", "Edit group {name}"], editGroup: ["编辑组", "Edit group"], groupMeta: ["组优先级 {priority} · {direction}", "Group priority {priority} · {direction}"],
     slotLabel: ["{name} {position} 槽位", "{name} {position} slot"], emptySlot: ["拖入组件，或使用卡片的槽位菜单", "Drop a component here or use its slot menu"],
-    boardKicker: ["布局示意 · 编辑草稿", "LAYOUT DIAGRAM · DRAFT"], boardTitle: ["页面布局", "Page layout"], count: ["{count} 个组件", "{count} components"], boardHint: ["拖握柄调整位置 · 也可使用 ↑ ↓ 和菜单", "Drag a grip, or use ↑ ↓ and menus"], implicitLegend: ["虚线 = 使用插件默认布局", "Dashed = plugin default layout"], renumber: ["自动重排优先级（步长 10）", "Renumber priorities automatically (steps of 10)"],
+    boardKicker: ["布局示意 · 编辑草稿", "LAYOUT DIAGRAM · DRAFT"], boardTitle: ["页面布局", "Page layout"], count: ["{count} 个组件", "{count} components"], boardHint: ["拖握柄或使用位置菜单 · 聚焦卡片后 Alt+方向上/下键排序", "Drag a grip or use the position menu · Focus a card, then Alt+ArrowUp/ArrowDown to reorder"], implicitLegend: ["虚线 = 使用插件默认布局", "Dashed = plugin default layout"], renumber: ["自动重排优先级（步长 10）", "Renumber priorities automatically (steps of 10)"],
     bodyLabel: ["正文 pageBody，不可放置组件", "Page body: components cannot be placed here"], bodyKicker: ["固定正文 · pageBody", "FIXED CONTENT · pageBody"], bodyTitle: ["留一点空间，给内容。", "Leave some room for your content."], bodyText: ["这里是文章本身。把导航放在两侧，让信息自然流动。", "Your article goes here. Put navigation around it and let the content breathe."], bodyBadge: ["不可放置组件 · 仅为布局示意", "No components here · Diagram only"],
-    trayTitle: ["组件托盘", "Component tray"], trayIntro: ["暂时不用的组件放在这里。移入槽位即可启用；移回托盘会禁用插件。", "Keep unused components here. Placing one in a slot enables it; moving it back disables its plugin."], trayLabel: ["已禁用组件托盘", "Disabled component tray"], emptyTray: ["没有禁用的布局组件。可将卡片拖到这里。", "No disabled layout components. Drag a card here to disable it."],
+    trayTitle: ["组件托盘", "Component tray"], trayIntro: ["绿色条是现有组件，拖入布局即可启用；黄色新增按钮，红色新增间隔。点击名称或按 Enter 打开属性，拖回托盘可禁用。", "Green rows are existing components; drag into the layout to enable. Yellow creates a button, red creates spacing. Click a name or press Enter for properties; drag back to disable."], trayLabel: ["已禁用组件托盘", "Disabled component tray"], emptyTray: ["没有禁用的布局组件。可将卡片拖到这里。", "No disabled layout components. Drag a card here to disable it."],
     pluginsTitle: ["非布局插件", "Non-layout plugins"], pluginsIntro: ["这些插件处理内容或生成页面，不是可拖动卡片。仅可切换启用状态，其余配置保留原样。", "These plugins process content or generate pages, not draggable cards. You can toggle enabled state; other settings stay untouched."], noPlugins: ["没有非布局插件。", "No non-layout plugins."], enablePlugin: ["启用 {name}", "Enable {name}"],
     properties: ["组件属性", "Component properties"], selectHint: ["选中一张卡片，调整显示条件、位置和分组。", "Select a card to edit its display rules, position and group."], pluginSource: ["插件标识：{source}", "Plugin source: {source}"], enableComponent: ["启用组件", "Enable component"], position: ["位置（position）", "Position"], priority: ["优先级（priority）", "Priority"], priorityHint: ["数字越小越靠前；自动重排会重新分配数字。", "Lower numbers appear first. Automatic renumbering reassigns these numbers."], display: ["显示范围（display）", "Display"], condition: ["显示条件（condition）", "Condition"],
     conditionHint: ["自定义条件需在 Quartz 注册；未知条件会警告并无条件显示。not-index = 非首页；has-tags = 有标签；has-backlinks = 有反向链接；has-toc = 有目录。", "Custom conditions must be registered in Quartz; unknown names warn and display unconditionally. Presets: not-index, has-tags, has-backlinks, has-toc."], notIndex: ["非首页", "Not the index page"], hasTags: ["文章有标签", "Has tags"], hasBacklinks: ["文章有反向链接", "Has backlinks"], hasToc: ["文章有目录", "Has a table of contents"],
-    group: ["分组（group）", "Group"], groupHint: ["空值表示移出分组；新名称会创建默认组。", "Leave blank to ungroup. A new name creates a default group."], groupOptions: ["组内布局（groupOptions）", "Group options"], grow: ["允许扩展（grow）", "Grow"], shrink: ["允许收缩（shrink）", "Shrink"], basis: ["基础宽度（basis）", "Basis"], order: ["组内顺序（order）", "Order"], align: ["交叉轴对齐（align）", "Align"], justify: ["主轴分布（justify）", "Justify"], unset: ["未设置", "Not set"], yes: ["是（true）", "Yes (true)"], no: ["否（false）", "No (false)"],
+    group: ["分组（group）", "Group"], groupHint: ["空值表示移出分组；新名称会创建默认组。", "Leave blank to ungroup. A new name creates a default group."], groupOptions: ["组内布局（groupOptions）", "Group options"], grow: ["允许扩展（grow）", "Grow"], shrink: ["允许收缩（shrink）", "Shrink"], basis: ["主轴基础尺寸（basis）", "Main-axis basis"], order: ["组内顺序（order）", "Order"], align: ["交叉轴对齐（align）", "Align"], justify: ["原生自对齐（justify，Flex 中无效）", "Native justify-self (ignored in Flex)"], unset: ["未设置", "Not set"], yes: ["是（true）", "Yes (true)"], no: ["否（false）", "No (false)"],
     dualWarning: ["禁用此插件也会关闭其转换器，不只是隐藏组件。", "Disabling this plugin also disables its transformer, not just its component."],
     groupsTitle: ["分组容器", "Group containers"], chooseGroup: ["选择分组", "Select group"], groupPlaceholder: ["选择或创建分组", "Select or create a group"], newGroup: ["新分组名称", "New group name"], createGroup: ["创建分组", "Create group"], groupPriority: ["组优先级", "Group priority"], direction: ["方向", "Direction"], defaultRow: ["默认横向排列（row）", "Default horizontal (row)"], wrapLabel: ["换行", "Wrap"], gap: ["间距", "Gap"], groupIntro: ["卡片分组菜单与拖入组容器使用同一移动逻辑。", "The group menu and drag-and-drop use the same movement logic."],
     pagesTitle: ["页面类型覆盖", "Page-type overrides"], pagesIntro: ["此处不支持添加或重排组件，只能清空和排除。", "You can only clear slots and exclude components here, not add or reorder them."], pageType: ["页面类型", "Page type"], page404: ["未找到", "Not found"], pageContent: ["文章", "Content"], pageFolder: ["文件夹", "Folder"], pageTag: ["标签", "Tag"], pageCanvas: ["画布", "Canvas"], pageBases: ["数据库", "Bases"], template: ["模板", "Template"], exclude: ["排除组件短名", "Exclude component short names"], excludeHint: ["使用逗号分隔，例如 reader-mode, graph。", "Separate with commas, for example reader-mode, graph."], clearSlots: ["清空槽位", "Clear slots"], clearSlot: ["清空 {name}（{position}）", "Clear {name} ({position})"], minimalWarning: ["minimal 模板只保留正文与页脚，header、beforeBody、left、right、afterBody 五个槽位不会显示。", "The minimal template keeps body and footer only; header, beforeBody, left, right and afterBody (five slots) will not appear."],
@@ -1563,7 +1651,7 @@ const QuartzEditor = (() => {
       case "footer": content = `<div class="effect-footer">${text("footerBuiltWith")}${entry.footerMeta?.error ? `<p class="small">${text("footerLinkReadonly")}</p>` : `<div class="effect-footer-links">${(entry.footerLinks || []).map((row, index) => `<button type="button" data-action="footer-link-edit" data-id="${entry.id}" data-index="${index}" data-footer-link="${index}" title="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}" aria-label="${esc(translate("footerLinkPreview", { name: row.label, url: row.url }))}">${esc(row.label)}</button>`).join("")}</div>`}</div>`; break;
       default: content = `<div class="effect-widget-heading">${esc(name)}</div>`;
     }
-    return `<div class="effect-component effect-${esc(entry.shortName)}" data-effect-entry="${entry.id}" data-effect-source="${esc(entry.shortName)}" data-effect-position="${esc(position)}" title="${esc(`${name} · ${entry.shortName} → ${position}`)}">${content}</div>`;
+    return `<div class="effect-component effect-${esc(entry.shortName)}${state.ui.toolPanel && state.selected === entry.id ? " effect-selected" : ""}" data-effect-entry="${entry.id}" data-effect-source="${esc(entry.shortName)}" data-effect-position="${esc(position)}" title="${esc(`${name} · ${entry.shortName} → ${position}`)}">${content}</div>`;
   }
   function renderDraftSlot(model, position) {
     if (!model.frameSlots.includes(position)) return "";
@@ -1646,7 +1734,8 @@ const QuartzEditor = (() => {
   const entryEnglishName = entry => entry.catalog?.displayName || EN_PLUGIN_NAMES[entry.shortName] || entry.shortName;
   const entryName = entry => {
     const name = state.ui.locale === "zh-CN" ? entry.catalog?.chineseName || ZH_PLUGIN_NAMES[entry.shortName] || entry.shortName : entryEnglishName(entry);
-    return entry.footerMeta && state.entries.filter(item => item.footerMeta).length > 1 ? `${name} #${entry.id + 1} · ${entry.footerLinks?.[0]?.label || "Footer"}` : name;
+    if (entry.footerMeta && state.entries.filter(item => item.footerMeta).length > 1) return `${name} #${entry.id + 1} · ${entry.footerLinks?.[0]?.label || "Footer"}`;
+    return entry.shortName === "spacer" && state.entries.filter(item => item.shortName === "spacer").length > 1 ? `${name} #${entry.id + 1}` : name;
   };
   const entryDescription = entry => state.ui.locale === "zh-CN" ? entry.catalog?.description || "" : ENGLISH_DESCRIPTIONS[entry.shortName] || "";
   const entryById = id => state.entries.find(entry => entry.id === Number(id));
@@ -1678,6 +1767,7 @@ const QuartzEditor = (() => {
     return translate(record.key, params);
   }
   const ERROR_COPY = [
+    ["每个独立按钮组件只能包含一个按钮，请新建独立按钮组件", "Each independent button component requires exactly one link; create another independent component"],
     ["footer links 名称须唯一且不能为空", "Footer button labels must be unique and nonempty"],
     ["footer links 地址须为页面路径、http(s) 或 mailto 地址", "Footer button targets must be page paths, http(s) or mailto URLs"],
     ["此 footer links 结构只读，请先在 YAML 中改为块映射", "These footer links are read-only; use a block mapping in YAML first"],
@@ -1761,11 +1851,17 @@ const QuartzEditor = (() => {
   }
   function renderFooterComponents(entry, editable = false) {
     if (!entry.footerMeta) return "";
-    if (!editable) return `<section class="footer-components" aria-label="${esc(translate("footerComponents"))}"><span class="pill warn">${esc(translate("footerSpecial"))}</span>${(entry.footerLinks || []).map((row, index) => `<div class="footer-link-card" data-footer-child="${index}"><button type="button" data-action="footer-link-edit" data-id="${entry.id}" data-index="${index}">${esc(row.label)}</button><p class="small">${esc(row.url)}</p></div>`).join("")}<button type="button" data-action="footer-link-edit" data-id="${entry.id}">${esc(translate("footerComponents"))}</button></section>`;
-    return `<fieldset id="footer-links-editor"><legend>${esc(translate("footerComponents"))}</legend><p class="notice">${esc(translate("footerLinksHelp"))}</p>${entry.footerMeta.error ? `<p class="notice warning">${esc(translate("footerLinkReadonly"))}</p>` : `<div class="footer-components">${entry.footerLinks.map((row, index) => `<section class="footer-link-card" data-footer-row="${index}"><span class="pill warn">${esc(translate("footerSpecial"))}</span>${textField(`footer-link-label-${index}`, translate("footerLinkLabel"), row.label)}${textField(`footer-link-url-${index}`, translate("footerLinkUrl"), row.url)}<div class="toolbar"><button type="button" data-action="footer-link-save" data-index="${index}">${esc(translate("footerLinkSave"))}</button><button type="button" data-action="footer-link-remove" data-index="${index}">${esc(translate("footerLinkRemove"))}</button><button type="button" data-action="footer-link-up" data-index="${index}" aria-label="${esc(translate("moveUp", { name: row.label }))}"${index === 0 ? " disabled" : ""}>↑</button><button type="button" data-action="footer-link-down" data-index="${index}" aria-label="${esc(translate("moveDown", { name: row.label }))}"${index === entry.footerLinks.length - 1 ? " disabled" : ""}>↓</button></div></section>`).join("") || `<p class="small">${esc(translate("footerLinkEmpty"))}</p>`}</div><button type="button" data-action="footer-link-add">${esc(translate("footerLinkAdd"))}</button>`}</fieldset>`;
+    if (!editable) return "";
+    const readonly = entry.footerMeta.error || entry.footerLinks.length > 1;
+    const row = entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" };
+    return `<fieldset id="footer-links-editor"><legend>${esc(translate("footerComponents"))}</legend><p class="notice">${esc(translate("footerSingleHelp"))}</p>${readonly ? `<p class="notice warning">${esc(translate(entry.footerMeta.error ? "footerLinkReadonly" : "footerLegacyHelp"))}</p>` : `<div data-footer-row="0">${textField("footer-link-label-0", translate("footerLinkLabel"), row.label)}${textField("footer-link-url-0", translate("footerLinkUrl"), row.url)}</div>`}</fieldset>`;
   }
   function renderCard(entry) {
-    return renderBaseCard(entry).replace(/<\/article>$/, `${renderFooterComponents(entry)}</article>`);
+    if (!entry.enabled || invalidPosition(entry)) {
+      const name = entryName(entry);
+      return `<article class="card tray-card${state.selected === entry.id ? " selected" : ""}" draggable="true" role="group" aria-label="${esc(translate("componentLabel", { name }))}" data-entry-id="${entry.id}"><button class="tray-strip drag-grip" type="button" data-action="select" data-id="${entry.id}" data-focus="select-${entry.id}" aria-label="${esc(translate("editComponent", { name }))}" aria-pressed="${state.selected === entry.id}" title="${esc(name)}">${esc(name)}</button></article>`;
+    }
+    return renderBaseCard(entry);
   }
   function renderBaseCard(entry) {
     const name = entryName(entry);
@@ -1773,7 +1869,7 @@ const QuartzEditor = (() => {
     const context = cardContext(entry);
     const implicit = entry.enabled && !entry.layout;
     const selected = state.selected === entry.id;
-    return `<article class="card${implicit ? " implicit" : ""}${!entry.enabled ? " disabled" : ""}${selected ? " selected" : ""}" draggable="true" tabindex="0" role="group" aria-label="${esc(translate("componentLabel", { name }))}" data-entry-id="${entry.id}" data-focus="card-${entry.id}"><div class="card-main"><span class="drag-grip" aria-hidden="true">⠿</span><div class="card-label"><button class="card-name" type="button" data-action="select" data-id="${entry.id}" data-focus="select-${entry.id}" aria-label="${esc(translate("editComponent", { name }))}" aria-pressed="${selected}">${esc(name)}</button>${state.ui.locale === "zh-CN" ? `<span class="component-english">${esc(entryEnglishName(entry))}</span>` : ""}<p class="component-description">${esc(entryDescription(entry))}</p><div class="card-badges"><span class="pill neutral">${esc(translate("priorityValue", { value: layout.priority }))}</span>${implicit ? `<span class="pill">${esc(translate("implicit"))}</span>` : ""}${invalidPosition(entry) ? `<span class="pill warn">${esc(translate("invalidSlot", { value: layout.position }))}</span>` : ""}${!entry.enabled ? `<span class="pill neutral">${esc(translate("disabled"))}</span>` : ""}${selected ? `<span class="pill">${esc(translate("selected"))}</span>` : ""}${isDual(entry) ? `<span class="pill neutral">${esc(translate("dual"))}</span>` : ""}</div></div></div><div class="card-controls"><button type="button" data-action="move" data-id="${entry.id}" data-direction="-1" data-focus="up-${entry.id}" aria-label="${esc(translate("moveUp", { name }))}"${context.index <= 0 ? " disabled" : ""}>↑</button><button type="button" data-action="move" data-id="${entry.id}" data-direction="1" data-focus="down-${entry.id}" aria-label="${esc(translate("moveDown", { name }))}"${context.index < 0 || context.index >= context.count - 1 ? " disabled" : ""}>↓</button><select data-control="card-position" data-id="${entry.id}" data-focus="position-${entry.id}" aria-label="${esc(translate("moveSlot", { name }))}">${slotOptions(context.position)}</select></div><select class="card-group-select" data-control="card-group" data-id="${entry.id}" data-focus="group-${entry.id}" aria-label="${esc(translate("moveGroup", { name }))}"${!entry.enabled ? " disabled" : ""}>${options([["", translate("noGroup")], ...groupNames().map(group => [group, translate("groupOption", { name: group })])], layout.group || "")}</select></article>`;
+    return `<article class="card${implicit ? " implicit" : ""}${!entry.enabled ? " disabled" : ""}${selected ? " selected" : ""}" draggable="true" tabindex="0" role="group" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="${esc(translate("componentLabel", { name }))}" data-entry-id="${entry.id}" data-focus="card-${entry.id}"><div class="card-main"><span class="drag-grip" aria-hidden="true">⠿</span><div class="card-label"><button class="card-name" type="button" data-action="select" data-id="${entry.id}" data-focus="select-${entry.id}" aria-label="${esc(translate("editComponent", { name }))}" aria-pressed="${selected}">${esc(name)}</button>${state.ui.locale === "zh-CN" ? `<span class="component-english">${esc(entryEnglishName(entry))}</span>` : ""}<p class="component-description">${esc(entryDescription(entry))}</p><div class="card-badges"><span class="pill neutral">${esc(translate("priorityValue", { value: layout.priority }))}</span>${implicit ? `<span class="pill">${esc(translate("implicit"))}</span>` : ""}${invalidPosition(entry) ? `<span class="pill warn">${esc(translate("invalidSlot", { value: layout.position }))}</span>` : ""}${!entry.enabled ? `<span class="pill neutral">${esc(translate("disabled"))}</span>` : ""}${selected ? `<span class="pill">${esc(translate("selected"))}</span>` : ""}${isDual(entry) ? `<span class="pill neutral">${esc(translate("dual"))}</span>` : ""}</div></div></div><div class="card-controls"><select data-control="card-position" data-id="${entry.id}" data-focus="position-${entry.id}" aria-label="${esc(translate("moveSlot", { name }))}">${slotOptions(context.position)}</select></div></article>`;
   }
   function insertZone(position, index, group = "") { return `<div class="drop-insert" aria-hidden="true" data-drop-position="${esc(position)}" data-drop-index="${index}"${group ? ` data-drop-group="${esc(group)}"` : ""}></div>`; }
   function renderSlot(position) {
@@ -1807,18 +1903,49 @@ const QuartzEditor = (() => {
     const attributes = key => `data-property="${key}"`;
     const unset = [["", translate("unset")]];
     const tri = [...unset, ["true", translate("yes")], ["false", translate("no")]];
-    panel.innerHTML = `<div class="panel-head"><h2>${esc(entryName(entry))}</h2></div><div class="panel-body">${state.ui.locale === "zh-CN" ? `<p class="component-english">${esc(entryEnglishName(entry))}</p>` : ""}<p class="notice">${esc(entryDescription(entry))}</p><p class="small">${esc(translate("pluginSource", { source: entry.source }))}</p><label class="check-line" for="property-enabled"><input id="property-enabled" type="checkbox" data-property="enabled"${entry.enabled ? " checked" : ""}>${esc(translate("enableComponent"))}</label>${selectField("property-position", translate("position"), core.POSITIONS.map(position => [position, slotName(position)]), layout.position, attributes("position"))}${textField("property-priority", translate("priority"), layout.priority, `${attributes("priority")} type="number" step="any"`, translate("priorityHint"))}${selectField("property-display", translate("display"), [...unset, "all", "mobile-only", "desktop-only"], layout.display, attributes("display"))}${textField("property-condition", translate("condition"), layout.condition, `${attributes("condition")} list="condition-presets"`, translate("conditionHint"))}<datalist id="condition-presets">${[["not-index", "notIndex"], ["has-tags", "hasTags"], ["has-backlinks", "hasBacklinks"], ["has-toc", "hasToc"]].map(([value, key]) => `<option value="${value}" label="${esc(translate(key))}"></option>`).join("")}</datalist>${textField("property-group", translate("group"), layout.group, attributes("group"), translate("groupHint"))}<fieldset><legend>${esc(translate("groupOptions"))}</legend>${["grow", "shrink"].map(key => selectField(`property-${key}`, translate(key), tri, layout.groupOptions?.[key] === undefined ? "" : String(layout.groupOptions[key]), attributes(`groupOptions.${key}`))).join("")}${textField("property-basis", translate("basis"), layout.groupOptions?.basis, attributes("groupOptions.basis"))}${textField("property-order", translate("order"), layout.groupOptions?.order, `${attributes("groupOptions.order")} type="number" step="any"`)}${selectField("property-align", translate("align"), [...unset, "start", "end", "center", "stretch"], layout.groupOptions?.align, attributes("groupOptions.align"))}${selectField("property-justify", translate("justify"), [...unset, "start", "end", "center", "between", "around"], layout.groupOptions?.justify, attributes("groupOptions.justify"))}</fieldset>${isDual(entry) ? `<p class="notice warning">${esc(translate("dualWarning"))}</p>` : ""}</div>`;
+    const groupField = entry.enabled ? "" : textField("property-group", translate("group"), layout.group, attributes("group"), translate("groupHint"));
+    panel.innerHTML = `<div class="panel-head"><h2>${esc(entryName(entry))}</h2></div><div class="panel-body">${state.ui.locale === "zh-CN" ? `<p class="component-english">${esc(entryEnglishName(entry))}</p>` : ""}<p class="notice">${esc(entryDescription(entry))}</p><p class="small">${esc(translate("pluginSource", { source: entry.source }))}</p><label class="check-line" for="property-enabled"><input id="property-enabled" type="checkbox" data-property="enabled"${entry.enabled ? " checked" : ""}>${esc(translate("enableComponent"))}</label>${selectField("property-position", translate("position"), core.POSITIONS.map(position => [position, slotName(position)]), layout.position, attributes("position"))}${textField("property-priority", translate("priority"), layout.priority, `${attributes("priority")} type="number" step="any"`, translate("priorityHint"))}${selectField("property-display", translate("display"), [...unset, "all", "mobile-only", "desktop-only"], layout.display, attributes("display"))}${textField("property-condition", translate("condition"), layout.condition, `${attributes("condition")} list="condition-presets"`, translate("conditionHint"))}<datalist id="condition-presets">${[["not-index", "notIndex"], ["has-tags", "hasTags"], ["has-backlinks", "hasBacklinks"], ["has-toc", "hasToc"]].map(([value, key]) => `<option value="${value}" label="${esc(translate(key))}"></option>`).join("")}</datalist>${groupField}<fieldset><legend>${esc(translate("groupOptions"))}</legend>${["grow", "shrink"].map(key => selectField(`property-${key}`, translate(key), tri, layout.groupOptions?.[key] === undefined ? "" : String(layout.groupOptions[key]), attributes(`groupOptions.${key}`))).join("")}${textField("property-basis", translate("basis"), layout.groupOptions?.basis, attributes("groupOptions.basis"))}${textField("property-order", translate("order"), layout.groupOptions?.order, `${attributes("groupOptions.order")} type="number" step="any"`)}${selectField("property-align", translate("align"), [...unset, "start", "end", "center", "stretch"], layout.groupOptions?.align, attributes("groupOptions.align"))}${selectField("property-justify", translate("justify"), [...unset, "start", "end", "center", "between", "around"], layout.groupOptions?.justify, attributes("groupOptions.justify"))}</fieldset>${isDual(entry) ? `<p class="notice warning">${esc(translate("dualWarning"))}</p>` : ""}</div>`;
   }
   function renderFooterProperties() {
-    const entry = entryById(state.selected);
-    document.querySelector(".board-heading").insertAdjacentHTML("afterend", `<div class="toolbar"><button type="button" data-action="footer-instance-add">${esc(translate("footerInstanceAdd"))}</button></div>`);
+    const entry = state.selected === null ? null : entryById(state.selected);
+    document.querySelector("#properties-panel > .panel-body").insertAdjacentHTML("afterbegin", selectField("selected-component", translate("chooseComponent"), [["", translate("chooseComponent")], ...state.entries.filter(item => item.catalog).map(item => [String(item.id), `${entryName(item)} · #${item.id + 1}`])], entry ? String(entry.id) : ""));
+    document.querySelector("#tray-panel > .panel-body").insertAdjacentHTML("afterbegin", `<section class="component-create" aria-label="${esc(translate("createComponents"))}"><h3 class="sr-only">${esc(translate("createComponents"))}</h3><button id="footer-instance-add" class="tray-strip drag-grip tray-create-footer" draggable="true" type="button" data-create-type="footer" data-action="footer-instance-add" aria-label="${esc(translate("footerInstanceAdd"))}" title="${esc(translate("createComponentsHelp"))}">${esc(translate("trayNewFooter"))}</button><button id="spacer-instance-add" class="tray-strip drag-grip tray-create-spacer" draggable="true" type="button" data-create-type="spacer" data-action="spacer-instance-add" aria-label="${esc(translate("spacerInstanceAdd"))}" title="${esc(translate("createComponentsHelp"))}">${esc(translate("trayNewSpacer"))}</button></section>`);
+    renderGroupOptionsHelp(entry);
+    if (entry?.shortName === "spacer") document.querySelector("#properties-panel > .panel-body").insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("spacerInstanceHelp"))}</p>${entry.added ? `<button class="component-delete" type="button" data-action="spacer-instance-remove">${esc(translate("footerInstanceRemove"))}</button>` : ""}`);
     if (!entry?.footerMeta) return;
     const body = document.querySelector("#properties-panel > .panel-body");
-    body.insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("footerInstanceHelp"))}</p>${entry.added ? `<button type="button" data-action="footer-instance-remove">${esc(translate("footerInstanceRemove"))}</button>` : ""}${renderFooterComponents(entry, true)}<p class="small">${esc(translate("footerStyleHelp"))}</p>`);
-    if (entry.footerMeta.error) return;
+    const editable = !entry.footerMeta.error && entry.footerLinks.length <= 1;
+    const saveButton = editable ? `<button class="primary" type="button" data-action="footer-link-save" data-index="0">${esc(translate("footerLinkSave"))}</button>` : "";
+    const deleteButton = entry.added ? `<button class="component-delete" type="button" data-action="footer-instance-remove">${esc(translate("footerInstanceRemove"))}</button>` : "";
+    body.insertAdjacentHTML("beforeend", `<p class="notice">${esc(translate("footerInstanceHelp"))}</p>${renderFooterComponents(entry, true)}<p class="small">${esc(translate("footerStyleHelp"))}</p>${saveButton || deleteButton ? `<div class="component-actions">${saveButton}${deleteButton}</div>` : ""}`);
+    if (entry.footerMeta.error || entry.footerLinks.length > 1) return;
     for (const [index, row] of entry.footerLinks.entries()) {
-      document.querySelector(`[data-footer-row="${index}"]`).insertAdjacentHTML("beforeend", selectField(`footer-style-${index}`, translate("footerButtonStyle"), [["", translate("footerStyleNative")], ...Object.keys(core.FOOTER_STYLES).map(style => [style, translate(`footerStyle${style[0].toUpperCase()}${style.slice(1)}`)])], state.ui.footerStyles[row.url] || "", `data-footer-style="${index}"`));
+      const preference = state.ui.footerStyles[row.url];
+      const appearance = core.footerAppearance(preference);
+      const mode = typeof preference === "object" ? preference.mode || (appearance.image ? "image" : appearance.icon ? "icon" : "text") : "text";
+      const styles = selectField(`footer-style-${index}`, translate("footerButtonStyle"), [["", translate("footerStyleNative")], ...Object.keys(core.FOOTER_STYLES).map(style => [style, translate(`footerStyle${style[0].toUpperCase()}${style.slice(1)}`)])], appearance.style, `data-footer-style="${index}"`);
+      const modes = selectField(`footer-visual-${index}`, translate("footerVisual"), [["text", translate("footerVisualText")], ["image", translate("footerVisualImage")], ["remote", translate("footerVisualRemote")]], mode, `data-footer-visual="${index}"`);
+      const upload = mode === "image" ? `<label class="field" for="footer-image-${index}"><span>${esc(translate("footerImage"))}</span><input id="footer-image-${index}" type="file" accept="image/png,image/jpeg,image/webp" data-footer-image="${index}"></label>${appearance.image ? `<img class="footer-visual" src="${esc(appearance.image)}" alt="${esc(row.label)}">` : `<p class="small">${esc(translate("footerImageMissing"))}</p>`}` : "";
+      const remote = mode === "remote" ? `<p class="small">${esc(translate("footerIconResource"))} <a href="https://appicons.co" target="_blank" rel="noopener noreferrer">https://appicons.co</a></p>` + textField(`footer-remote-${index}`, translate("footerRemoteUrl"), preference?.remoteUrl || "", `data-footer-remote="${index}" type="url" maxlength="4096" placeholder="https://example.com/icon.svg"`, translate("footerRemoteHelp")) : "";
+      document.querySelector(`[data-footer-row="${index}"]`).insertAdjacentHTML("beforeend", styles + modes + upload + remote + (mode === "remote" ? "" : `<p class="small">${esc(translate("footerImageHelp"))}</p>`));
     }
+  }
+  function renderGroupOptionsHelp(entry) {
+    if (!entry) return;
+    const grouped = Boolean(core.effectiveLayout(entry).group);
+    const fieldset = document.getElementById("property-basis").closest("fieldset");
+    if (!grouped) { fieldset.remove(); return; }
+    fieldset.querySelector("legend").insertAdjacentHTML("afterend", `<p class="small">${esc(translate("groupOptionsHelp"))}</p>`);
+    for (const key of ["grow", "shrink", "basis", "order", "align", "justify"]) {
+      const input = document.getElementById(`property-${key}`);
+      const hint = document.createElement("small");
+      hint.id = `property-${key}-hint`;
+      hint.textContent = translate(`${key}Help`);
+      input.setAttribute("aria-describedby", hint.id);
+      input.after(hint);
+    }
+    document.getElementById("property-basis").setAttribute("list", "basis-presets");
+    fieldset.insertAdjacentHTML("beforeend", `<datalist id="basis-presets">${["auto", "0px", "160px", "12rem", "30%", "100%"].map(value => `<option value="${value}"></option>`).join("")}</datalist>`);
   }
   function renderGroups() {
     const name = state.ui.editGroup;
@@ -1865,6 +1992,35 @@ const QuartzEditor = (() => {
     if (id === "plugins-panel") state.ui.pluginsOpen = true;
     else state.ui.panelsOpen[id] = true;
   }
+  function scrollToSelection(groupName = null) {
+    const entry = entryById(state.selected);
+    if (groupName === null && (!entry?.enabled || invalidPosition(entry))) return;
+    const effect = state.ui.boardView === "effect";
+    const target = groupName === null
+      ? document.querySelector(effect ? `[data-effect-entry="${entry.id}"]` : `.frame [data-entry-id="${entry.id}"]`)
+      : [...document.querySelectorAll(effect ? "[data-effect-group]" : "[data-group-disclosure]")].find(node => effect ? node.dataset.effectGroup === groupName : JSON.parse(node.dataset.groupDisclosure)[1] === groupName);
+    if (!target) return;
+    const disclosure = target.closest("details[data-group-disclosure]");
+    if (disclosure) {
+      disclosure.open = true;
+      state.ui.collapsedGroups.delete(disclosure.dataset.groupDisclosure);
+    }
+    const dock = document.querySelector(".board-modes").getBoundingClientRect();
+    const top = state.ui.dockPosition === "top" ? dock.bottom + 16 : 16;
+    window.scrollTo({ top: Math.max(0, scrollY + target.getBoundingClientRect().top - top), behavior: "instant" });
+    const surface = target.closest(".effect-scroll");
+    if (surface) {
+      const bounds = surface.getBoundingClientRect();
+      const position = target.getBoundingClientRect();
+      if (position.left < bounds.left || position.right > bounds.right) surface.scrollLeft += position.left - bounds.left - 12;
+    }
+  }
+  function selectComponent(id) {
+    state.selected = Number(id);
+    revealEntry(state.selected);
+    state.ui.drafts = {};
+    render(); focusToolPanel(); scrollToSelection();
+  }
   function focusToolPanel() {
     const panel = document.getElementById(state.ui.toolPanel);
     panel?.querySelector("summary")?.focus({ preventScroll: true });
@@ -1901,9 +2057,13 @@ const QuartzEditor = (() => {
       panel.hidden = active !== id;
       panel.open = active === id;
       if (active === id) {
+        const summary = panel.querySelector("summary");
+        summary.id = `${id}-summary`;
+        summary.dataset.action = "close-tool-panel";
+        summary.title = translate("closeToolPanel");
+        summary.insertAdjacentHTML("beforeend", '<span class="tool-panel-close" aria-hidden="true">×</span>');
         const context = id === "properties-panel" ? state.selected : id === "groups-panel" ? state.ui.editGroup : id === "pages-panel" ? state.ui.pageType : "";
         panel.querySelector(".panel-body").dataset.scrollKey = JSON.stringify([id, context]);
-        panel.insertAdjacentHTML("beforeend", `<button type="button" class="tool-panel-close" data-action="close-tool-panel" aria-label="${esc(translate("closeToolPanel"))}" title="${esc(translate("closeToolPanel"))}">×</button>`);
       }
     }
     updateToolGeometry();
@@ -1930,6 +2090,8 @@ const QuartzEditor = (() => {
   function render() {
     if (state.ui.pointerActive) { state.ui.renderPending = true; return; }
     state.ui.renderPending = false;
+    const pageLeft = scrollX;
+    const pageTop = scrollY;
     const focus = focusSnapshot();
     if (!state.ui.resetPanelScroll) rememberPanelScroll();
     state.ui.resetPanelScroll = false;
@@ -1938,8 +2100,22 @@ const QuartzEditor = (() => {
       renderBoard(); applyDraftStyles(); renderProperties(); renderFooterProperties(); renderGroups(); renderPages(); renderPanelDisclosures(); renderPanelTools();
       document.querySelectorAll("[data-effect-source='footer'] [data-footer-link]").forEach(button => {
         const entry = entryById(button.dataset.id);
-        const style = state.ui.footerStyles[entry.footerLinks[Number(button.dataset.index)].url];
-        if (Object.hasOwn(core.FOOTER_STYLES, style)) button.style.cssText = `display: inline-flex; align-items: center; padding: .45rem .85rem; border: 1px solid; font-weight: 600; line-height: 1.4; ${core.FOOTER_STYLES[style]}`;
+        const { style, icon, image } = core.footerAppearance(state.ui.footerStyles[entry.footerLinks[Number(button.dataset.index)].url]);
+        if (style || icon || image) button.style.cssText = `display: inline-flex; align-items: center; padding: .45rem .85rem; border: 1px solid; font-weight: 600; line-height: 1.4; ${core.FOOTER_STYLES[style || "link"]}${icon || image ? "min-width: 2.75rem; min-height: 2.75rem; justify-content: center;" : ""}`;
+        if (icon || image) {
+          const label = button.textContent;
+          const text = document.createElement("span");
+          text.className = "sr-only"; text.textContent = label;
+          const visual = document.createElement(image ? "img" : "span");
+          visual.className = "footer-visual";
+          visual.setAttribute("aria-hidden", "true");
+          if (image) {
+            visual.referrerPolicy = "no-referrer";
+            visual.addEventListener("error", () => { visual.hidden = true; text.className = ""; }, { once: true });
+            visual.src = image; visual.alt = "";
+          } else visual.textContent = core.FOOTER_ICONS[icon];
+          button.replaceChildren(visual, text);
+        }
       });
     }
     renderModal();
@@ -1948,6 +2124,7 @@ const QuartzEditor = (() => {
     status.dataset.tone = state.ui.error ? "error" : state.ui.tone;
     document.getElementById("generate-config").disabled = !state.ui.ready;
     restoreFocus(focus);
+    window.scrollTo({ left: pageLeft, top: pageTop, behavior: "instant" });
   }
   function setLocale(value) {
     if (!["zh-CN", "en"].includes(value)) return;
@@ -1989,6 +2166,7 @@ const QuartzEditor = (() => {
       const layout = { ...core.effectiveLayout(entry) };
       if (key.startsWith("groupOptions.")) {
         const field = key.split(".")[1];
+        if (field === "basis" && value && (/[;{}]|url\s*\(|var\s*\(/i.test(value) || !CSS.supports("flex-basis", value))) throw message("basisInvalid");
         const options = { ...(layout.groupOptions || {}) };
         if (value === "") delete options[field];
         else options[field] = ["grow", "shrink"].includes(field) ? value === "true" : field === "order" ? Number(value) : value;
@@ -1998,6 +2176,7 @@ const QuartzEditor = (() => {
       core.updateEntry(state, entry.id, { layout });
     }
     state.ui.drafts = {}; state.ui.error = null; setMessage("propertyUpdated", { entryId: entry.id }); render();
+    if (key === "enabled" && value) scrollToSelection();
   }
   async function copyOutput(styles = false) {
     const text = styles ? core.footerStyles(state, state.ui.footerStyles) : state.ui.output.text;
@@ -2051,49 +2230,46 @@ const QuartzEditor = (() => {
         else { showToolPanel(button.dataset.panel); render(); focusToolPanel(); }
         return;
       }
-      if (action === "close-tool-panel") { closeToolPanel(); return; }
+      if (action === "close-tool-panel") { event.preventDefault(); closeToolPanel(); return; }
+      if (action === "spacer-instance-add") {
+        const entry = core.addSpacer(state);
+        core.updateEntry(state, entry.id, { enabled: false });
+        showToolPanel("properties-panel"); state.ui.drafts = {}; state.ui.error = null;
+        setMessage("spacerInstanceUpdated"); render(); focusToolPanel(); return;
+      }
+      if (action === "spacer-instance-remove") {
+        core.removeAddedSpacer(state, state.selected); showToolPanel("tray-panel"); state.ui.drafts = {}; state.ui.error = null;
+        setMessage("spacerInstanceUpdated"); render(); document.getElementById("spacer-instance-add")?.focus({ preventScroll: true }); return;
+      }
       if (action === "footer-instance-add") {
         const entry = core.addFooter(state);
+        core.updateEntry(state, entry.id, { enabled: false });
         core.updateFooterLinks(state, entry.id, [{ label: translate("footerLinkDefault"), url: "/about" }]);
         showToolPanel("properties-panel"); state.ui.drafts = {}; state.ui.error = null;
-        setMessage("footerInstanceUpdated"); render(); document.getElementById("footer-link-label-0")?.focus(); return;
+        setMessage("footerInstanceUpdated"); render(); focusToolPanel(); return;
       }
       if (action === "footer-instance-remove") {
-        core.removeAddedFooter(state, state.selected); state.ui.drafts = {}; state.ui.error = null;
-        setMessage("footerInstanceUpdated"); render(); document.querySelector('[data-action="footer-instance-add"]')?.focus(); return;
+        core.removeAddedFooter(state, state.selected); showToolPanel("tray-panel"); state.ui.drafts = {}; state.ui.error = null;
+        setMessage("footerInstanceUpdated"); render(); document.getElementById("footer-instance-add")?.focus({ preventScroll: true }); return;
       }
       if (action === "footer-link-edit") {
-        state.selected = Number(button.dataset.id); showToolPanel("properties-panel"); state.ui.drafts = {}; render();
+        selectComponent(button.dataset.id);
         const target = document.getElementById(`footer-link-label-${button.dataset.index}`) || document.getElementById("footer-links-editor");
-        target?.scrollIntoView({ block: "center" }); target?.focus({ preventScroll: true }); return;
+        const body = target?.closest(".panel-body");
+        if (body) body.scrollTop += target.getBoundingClientRect().top - body.getBoundingClientRect().top - 16;
+        target?.focus({ preventScroll: true }); return;
       }
-      if (["footer-link-add", "footer-link-save", "footer-link-remove", "footer-link-up", "footer-link-down"].includes(action)) {
+      if (action === "footer-link-save") {
         const entry = entryById(state.selected);
-        const rows = entry.footerLinks.map(row => ({ ...row }));
-        const index = Number(button.dataset.index);
-        if (action === "footer-link-add") {
-          let suffix = 1;
-          while (rows.some(row => row.label === `${translate("footerLinkDefault")} ${suffix}`)) suffix++;
-          rows.push({ label: `${translate("footerLinkDefault")} ${suffix}`, url: "/" });
-        } else if (action === "footer-link-save") {
-          rows[index] = { label: draft(`footer-link-label-${index}`, rows[index].label), url: draft(`footer-link-url-${index}`, rows[index].url) };
-        } else if (action === "footer-link-remove") rows.splice(index, 1);
-        else {
-          const destination = index + (action === "footer-link-up" ? -1 : 1);
-          if (destination < 0 || destination >= rows.length) return;
-          [rows[index], rows[destination]] = [rows[destination], rows[index]];
-        }
+        if (entry.footerLinks.length > 1) return;
+        const row = entry.footerLinks[0] || { label: translate("footerLinkDefault"), url: "/about" };
+        const rows = [{ label: draft("footer-link-label-0", row.label), url: draft("footer-link-url-0", row.url) }];
         core.updateFooterLinks(state, entry.id, rows); state.ui.drafts = {}; state.ui.error = null; setMessage("footerLinkUpdated"); render();
-        if (action === "footer-link-add") document.getElementById(`footer-link-label-${rows.length - 1}`)?.focus();
         return;
       }
       if (action === "draft-edit") { state.selected = Number(button.dataset.id); state.ui.boardView = "edit"; revealEntry(state.selected); render(); document.querySelector(`[data-focus="select-${state.selected}"]`)?.focus(); return; }
-      if (action === "select") { state.selected = Number(button.dataset.id); showToolPanel("properties-panel"); state.ui.drafts = {}; render(); focusToolPanel(); }
-      else if (action === "move") {
-        const entry = core.move(state, Number(button.dataset.id), Number(button.dataset.direction));
-        announceMove(entry); render();
-      }
-      else if (action === "edit-group") { state.ui.editGroup = button.dataset.name; showToolPanel("groups-panel"); render(); document.getElementById("edit-group").focus(); }
+      if (action === "select") { selectComponent(button.dataset.id); }
+      else if (action === "edit-group") { event.preventDefault(); state.ui.editGroup = button.dataset.name; showToolPanel("groups-panel"); render(); document.getElementById("edit-group").focus({ preventScroll: true }); scrollToSelection(state.ui.editGroup); }
       else if (action === "add-group") {
         const name = state.ui.newGroupName.trim();
         if (!name || ["__proto__", "constructor", "prototype"].includes(name)) throw message("invalidGroup");
@@ -2132,10 +2308,36 @@ const QuartzEditor = (() => {
       if (input.id === "draft-regions") { state.ui.draftContext.regions = input.checked; render(); return; }
       if (input.id === "draft-fit") { state.ui.draftContext.fit = input.checked; render(); return; }
       if (input.dataset.draftCondition) { state.ui.draftContext[input.dataset.draftCondition] = input.checked; render(); return; }
-      if (input.dataset.footerStyle !== undefined) {
-        const row = entryById(state.selected).footerLinks[Number(input.dataset.footerStyle)];
-        if (Object.hasOwn(core.FOOTER_STYLES, input.value)) put(state.ui.footerStyles, row.url, input.value);
-        else delete state.ui.footerStyles[row.url];
+      if (input.dataset.footerStyle !== undefined || input.dataset.footerVisual !== undefined || input.dataset.footerImage !== undefined || input.dataset.footerRemote !== undefined) {
+        const entries = state.entries;
+        const ownerId = state.selected;
+        const index = Number(input.dataset.footerStyle ?? input.dataset.footerVisual ?? input.dataset.footerImage ?? input.dataset.footerRemote);
+        const row = entryById(ownerId).footerLinks[index];
+        const old = state.ui.footerStyles[row.url];
+        const preference = typeof old === "string" ? { style: old, mode: "text" } : { ...old };
+        if (input.dataset.footerStyle !== undefined) preference.style = input.value;
+        if (input.dataset.footerVisual !== undefined) preference.mode = input.value;
+        if (input.dataset.footerRemote !== undefined) {
+          const url = input.value.trim();
+          if (url && !core.validFooterIconUrl(url)) throw message("footerRemoteInvalid");
+          preference.remoteUrl = url;
+          delete state.ui.drafts[input.id];
+          state.ui.error = null;
+        }
+        if (input.dataset.footerImage !== undefined) {
+          const file = input.files?.[0];
+          if (!file) return;
+          if (file.size > 1048576 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw message("footerImageInvalid");
+          const image = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(message("footerImageInvalid")); reader.readAsDataURL(file); });
+          if (!core.validFooterImage(image)) throw message("footerImageInvalid");
+          const bitmap = await createImageBitmap(file).catch(() => { throw message("footerImageInvalid"); });
+          const valid = bitmap.width <= 2048 && bitmap.height <= 2048;
+          bitmap.close();
+          if (!valid) throw message("footerImageInvalid");
+          if (state.entries !== entries || state.selected !== ownerId || entryById(ownerId)?.footerLinks[index]?.url !== row.url) return;
+          preference.mode = "image"; preference.image = image;
+        }
+        put(state.ui.footerStyles, row.url, preference);
         state.dirty = true; render(); return;
       }
       if (input.id === "config-file") {
@@ -2146,12 +2348,12 @@ const QuartzEditor = (() => {
         requestLoad(text, { kind: "file", name: file.name });
       } else if (input.id === "renumber-priorities") state.renumber = input.checked;
       else if (input.dataset.control === "card-position") moveEntry(input.dataset.id, input.value);
-      else if (input.dataset.control === "card-group") moveEntry(input.dataset.id, core.effectiveLayout(entryById(input.dataset.id)).position, undefined, input.value);
       else if (input.dataset.control === "plugin-enabled") {
         core.updateEntry(state, Number(input.dataset.id), { enabled: input.checked }); state.ui.error = null; setMessage("pluginUpdated"); render();
       }
       else if (input.dataset.property) mutateProperty(input.dataset.property, input.type === "checkbox" ? input.checked : input.value);
-      else if (input.id === "edit-group") { state.ui.editGroup = input.value; state.ui.drafts = {}; render(); }
+      else if (input.id === "selected-component") { if (input.value !== "") selectComponent(input.value); }
+      else if (input.id === "edit-group") { state.ui.editGroup = input.value; state.ui.drafts = {}; render(); if (input.value) scrollToSelection(input.value); }
       else if (input.dataset.groupProperty) {
         const key = input.dataset.groupProperty;
         const group = { ...(state.groups[state.ui.editGroup] || {}) };
@@ -2176,8 +2378,13 @@ const QuartzEditor = (() => {
     if (event.key === "Escape" && state.ui.modalOpen) { event.preventDefault(); state.ui.modalOpen = false; render(); document.getElementById("generate-config").focus(); return; }
     if (event.key === "Escape" && state.ui.toolPanel && state.ui.dragId === null && !pointerDrag) { event.preventDefault(); closeToolPanel(); return; }
     const card = event.target.closest("[data-entry-id]");
+    if (card && event.target === card && event.altKey && !event.ctrlKey && !event.metaKey && ["ArrowUp", "ArrowDown"].includes(event.key) && card.closest(".frame")) {
+      event.preventDefault();
+      const entry = core.move(state, Number(card.dataset.entryId), event.key === "ArrowUp" ? -1 : 1);
+      announceMove(entry); render(); return;
+    }
     if (card && event.target === card && ["Enter", " "].includes(event.key)) {
-      event.preventDefault(); state.selected = Number(card.dataset.entryId); showToolPanel("properties-panel"); render(); focusToolPanel();
+      event.preventDefault(); selectComponent(card.dataset.entryId);
     }
   });
   let dragScrollFrame = null;
@@ -2185,6 +2392,23 @@ const QuartzEditor = (() => {
   let dragScrollTime = null;
   let dragHover = null;
   let pointerDrag = null;
+  let dragCreate = null;
+  let suppressDragClick = false;
+  document.addEventListener("click", event => {
+    if (!suppressDragClick) return;
+    suppressDragClick = false;
+    event.preventDefault(); event.stopImmediatePropagation();
+  }, true);
+  function completeComponentDrop(id, createType, target) {
+    if (!target || createType && target.position === "tray") return;
+    try {
+      if (createType) {
+        const entry = createType === "footer" ? core.addFooter(state) : core.addSpacer(state);
+        id = entry.id;
+      }
+      moveEntry(id, target.position, target.index, target.group);
+    } catch (error) { reportError(error); }
+  }
   function clearDropHighlight() {
     document.querySelectorAll(".is-drop-target").forEach(element => element.classList.remove("is-drop-target"));
   }
@@ -2198,7 +2422,9 @@ const QuartzEditor = (() => {
   }
   function finishDrag() {
     stopDragScroll();
+    if (pointerDrag && state.ui.dragId !== null) suppressDragClick = true;
     state.ui.dragId = null;
+    dragCreate = null;
     const previous = pointerDrag;
     pointerDrag = null;
     previous?.preview?.remove();
@@ -2238,8 +2464,9 @@ const QuartzEditor = (() => {
     dragScrollFrame = requestAnimationFrame(scrollDuringDrag);
   }
   document.addEventListener("pointerdown", event => {
+    suppressDragClick = false;
     const grip = event.target.closest(".drag-grip");
-    const card = grip?.closest("[data-entry-id]");
+    const card = grip?.closest("[data-entry-id], [data-create-type]");
     if (!card || event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     pointerDrag = { grip, card, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, preview: null };
@@ -2249,11 +2476,12 @@ const QuartzEditor = (() => {
     if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
     if (state.ui.dragId === null) {
       if (Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY) < 5) return;
-      state.ui.dragId = Number(pointerDrag.card.dataset.entryId);
+      dragCreate = pointerDrag.card.dataset.createType || null;
+      state.ui.dragId = dragCreate ? -1 : Number(pointerDrag.card.dataset.entryId);
       const preview = document.createElement("div");
       preview.className = "drag-preview";
       preview.setAttribute("aria-hidden", "true");
-      preview.textContent = entryName(entryById(state.ui.dragId));
+      preview.textContent = dragCreate ? pointerDrag.card.textContent : entryName(entryById(state.ui.dragId));
       document.body.append(preview);
       pointerDrag.preview = preview;
       pointerDrag.card.classList.add("is-dragging");
@@ -2266,14 +2494,15 @@ const QuartzEditor = (() => {
     else if (dragScrollFrame === null) dragScrollFrame = requestAnimationFrame(scrollDuringDrag);
   });
   document.addEventListener("pointerup", event => {
+    if (suppressDragClick) setTimeout(() => { suppressDragClick = false; }, 0);
     if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
     const id = state.ui.dragId;
+    const createType = dragCreate;
     const element = document.elementFromPoint(event.clientX, event.clientY);
     const target = id !== null && element ? dropTarget({ target: element, clientY: event.clientY }) : null;
+    if (id !== null) { suppressDragClick = true; setTimeout(() => { suppressDragClick = false; }, 0); }
     finishDrag();
-    if (target) {
-      try { moveEntry(id, target.position, target.index, target.group); } catch (error) { reportError(error); }
-    }
+    completeComponentDrop(id, createType, target);
   });
   document.addEventListener("pointercancel", () => { if (pointerDrag) finishDrag(); });
   document.addEventListener("lostpointercapture", () => { if (pointerDrag) finishDrag(); });
@@ -2299,11 +2528,12 @@ const QuartzEditor = (() => {
   }, { passive: false });
   document.addEventListener("dragstart", event => {
     if (pointerDrag) { event.preventDefault(); return; }
-    const card = event.target.closest("[data-entry-id]");
+    const card = event.target.closest("[data-entry-id], [data-create-type]");
     if (!card) return;
     stopDragScroll();
-    state.ui.dragId = Number(card.dataset.entryId);
-    event.dataTransfer.effectAllowed = "move";
+    dragCreate = card.dataset.createType || null;
+    state.ui.dragId = dragCreate ? -1 : Number(card.dataset.entryId);
+    event.dataTransfer.effectAllowed = dragCreate ? "copy" : "move";
     event.dataTransfer.setData("text/plain", String(state.ui.dragId));
   });
   function dropTarget(event) {
@@ -2330,17 +2560,18 @@ const QuartzEditor = (() => {
     dragPoint = { x: event.clientX, y: event.clientY };
     if (dragScrollFrame === null) dragScrollFrame = requestAnimationFrame(scrollDuringDrag);
     const target = dropTarget(event);
-    event.dataTransfer.dropEffect = target ? "move" : "none";
+    event.dataTransfer.dropEffect = target && !(dragCreate && target.position === "tray") ? dragCreate ? "copy" : "move" : "none";
     updateDragTarget();
   });
   document.addEventListener("drop", event => {
     if (state.ui.dragId === null) return;
     const target = dropTarget(event);
     const id = state.ui.dragId;
+    const createType = dragCreate;
     finishDrag();
     if (!target) return;
     event.preventDefault();
-    try { moveEntry(id, target.position, target.index, target.group); } catch (error) { reportError(error); }
+    completeComponentDrop(id, createType, target);
   });
   document.addEventListener("dragend", finishDrag);
   document.addEventListener("dragleave", event => { if (event.relatedTarget === null) stopDragScroll(); });

@@ -2,7 +2,7 @@
 
 Quartz v5 布局配置的可视化编辑器。单文件 HTML，离线可用，拖拽调整组件位置后生成可直接粘回 `quartz.config.yaml` 的配置。
 
-当前发布版本：**0.3**（Git 标签与 GitHub Release 同名）。下载 Release 附件 `index.html` 即可离线使用。
+当前发布版本：**0.4**（Git 标签与 GitHub Release 同名）。下载 Release 附件 `index.html` 即可离线使用。
 
 ## 要解决的问题
 
@@ -14,13 +14,26 @@ Quartz v5 把布局写在 `quartz.config.yaml` 里：每个提供组件的插件
 
 1. 双击 `index.html`，无需安装依赖、启动服务或联网。
 2. 默认直接显示官方 Quartz v5 配置。也可以选择本地 YAML 文件，或粘贴完整的 `quartz.config.yaml`；两种输入都只在页面内存中处理。
-3. 拖动卡片左上角握柄调整位置与顺序，或用 Tab 导航到上移/下移按钮、槽位和分组菜单。选中卡片可编辑显示条件、优先级及组内属性。
+3. 拖动卡片左上角握柄调整位置与顺序，或用 Tab 导航到槽位菜单；聚焦卡片后可按 Alt+方向上/下键排序，不再显示上下箭头按钮。点击组件名称打开组件属性，在其中设置显示条件、优先级及组内属性；已启用组件不显示分组名称字段。
    设置好后点击「效果预览」，直接查看当前草稿的页面外观；无需先生成或保存配置。
 4. 点击「生成配置」，检查行级 diff，再点击「复制完整配置」，手动粘贴回自己的文件。自动复制不可用时按 Ctrl+C。
 
 工具不会自动读取、修改或删除你的 Quartz 文件，也不自动保存配置。切换输入源有未生成的改动时会在页面内确认。
 
 ### 长页面操作
+
+- 组件托盘使用单行名称拖动条：绿色为现有组件，黄色为新增 Footer 按钮，红色为新增 Spacer。拖动现有条到布局即可启用，拖动新增条到槽位或组内即可创建实例（取消不创建）；也可点击名称或按 Enter 打开属性。托盘不再展示说明、徽章、排序或下拉框，详细设置统一在组件属性中操作。长名称单行省略，悬停可看完整名称。
+- 编辑画布不再为每个组件重复显示分组下拉框；仅保留 toolbar 这类实际分组的统一容器。已启用组件的属性也不显示「分组（group）」字段，加入或移出组请直接拖入／拖出；未启用组件仍保留分组名称入口。组整体配置通过「编辑组」或悬浮条的「分组容器」打开。
+
+The tray uses compact name-only draggable rows: green for existing components, yellow for new Footer buttons, red for new Spacers. Drag existing rows into the layout to enable them, or drag creation rows into a slot/group to create an instance; cancellation creates nothing. Click a name or press Enter for properties. Descriptions and controls live in properties, not the tray; long names truncate with a full-name tooltip.
+
+The layout canvas no longer repeats a group selector on every component. Actual groups such as toolbar keep a single shared container. Enabled components also omit the Group field in properties; drag them into/out of groups to change membership. Disabled components retain the group assignment field. Use Edit group or Group containers for group-wide settings.
+
+Component cards have no up/down buttons. Drag to reorder, use the slot menu to relocate, or focus a canvas card and press Alt+ArrowUp/ArrowDown for keyboard reordering. Priority is also editable in properties.
+
+托盘点击名称只切换到组件属性，**不会自动启用组件**；点击新增 Footer／Spacer 也只创建未启用组件，先配置再勾选「启用组件」或拖入布局。手动勾选启用后，页面会自动定位到该组件的画布／预览位置；当前预览条件下不可见的组件不触发定位。组件属性顶部可直接切换当前组件。主动选择已启用组件或选择分组时，页面也会定位并展开折叠组；禁用组件不会触发定位。普通属性编辑、面板开关不移动页面。五个面板点击整个顶部标题栏（包括右侧 ×）即可收起，也支持键盘 Enter／空格和 Escape。底部悬浮条时页面顶部不再预留空白，顶部悬浮条时仅保留避免遮挡的必要间距。
+
+Clicking a tray name opens properties without enabling the component. Clicking New Footer/Spacer also creates a disabled instance. Configure it, then drag into the layout or check Enable component. Manually enabling locates the component in the current canvas/preview unless preview conditions hide it. The properties selector switches components directly. Explicit selection also locates enabled components or groups and expands collapsed groups; disabled or preview-hidden components do not scroll the page. Routine property edits and panel toggles keep page scroll unchanged. Click anywhere on a panel heading, including ×, or use Enter/Space or Escape to close it. No top blank space is reserved for a bottom dock; a top dock keeps only its required clearance.
 
 - 「编辑布局 / 效果预览」与五个面板入口合并为底部悬浮切换条，滚动到哪里都能使用。点击「移到顶部 ↑」可切换为顶部悬浮条，点击「移到底部 ↓」可恢复；浏览器记住位置偏好，存储被禁用时仍可切换。切换条位置不会更改配置或滚动页面。
 - 按住组件左上角握柄拖动时，也可使用鼠标滚轮上下滚动；靠近屏幕上沿或下沿时会自动滚动。移回中间暂停自动滚动，放下或按 Esc 取消即停止。折叠的托盘或画布内分组，拖到标题上稍作停留即可自动展开。
@@ -92,13 +105,38 @@ The preview spans the workspace and uses legible system fonts. Region labels inc
 
 ## 自定义按钮组件
 
-点击「页脚（Footer）」组件，在属性下方的「自定义按钮组件 · footer links」添加按钮，填写名称与目标（如 `/about`、`/notes/start` 或完整网址），点击「保存按钮」。支持删除和上移/下移排序。效果预览使用实际按钮文字；点击预览按钮会打开其设置，不会联网或跳转页面。
+每个独立按钮组件只有一个按钮，在组件属性的「按钮设置 · 原生 Footer」直接填写名称与目标（如 `/about`、`/notes/start` 或完整网址），点击「保存按钮」。不再提供嵌套按钮、添加按钮或组内排序入口；需要另一个按钮，请回到组件托盘新增独立按钮。效果预览使用实际按钮文字；点击预览按钮打开其设置，不跳转目标页面。导入的多链接 Footer 保留原配置并显示只读说明，不会自动删除或拆分；可先在 YAML 中整理为每个 Footer 一个链接再导入。
 
-**只用原生，不安装外来插件。** 点击画布上方「新增独立按钮组件（原生 Footer）」可创建多个原生 Footer 实例，分别拖到六个槽位；每个实例内的按钮共同移动、启用或隐藏。要单独放置一个按钮，就新建一个实例并只保留该按钮。输出仍为原生 Footer 的 `options.links` 和 `layout`，不生成自定义插件或虚构参数。名称在同一实例内必须唯一，禁止危险协议。根路径 `/about` 指向域名根目录；Cloudflare 子目录部署时请包含站点路径前缀，部署后验证目标页面存在。
+**只用原生，不安装外来插件。** 打开悬浮条的「组件托盘」，点击或拖动黄色「新增独立按钮 · Footer」；这里也可重复添加 Spacer。每个独立按钮对应一个原生 Footer 实例，可分别拖到六个槽位，独立启用或隐藏。输出仍为原生 Footer 的 `options.links` 和 `layout`，不生成自定义插件或虚构参数。名称不能为空，禁止危险协议。根路径 `/about` 指向域名根目录；Cloudflare 子目录部署时请包含站点路径前缀，部署后验证目标页面存在。
 
 属性中可选原生链接、简洁文字、描边、实心、胶囊样式。样式通过 Quartz 自带的 `quartz/styles/custom.scss` 实现：生成配置后，**另行复制按钮样式**，追加到已有文件末尾；如已粘贴过本编辑器生成的样式，请替换旧段，不要重复追加。仅粘贴 YAML 不会应用样式。相同目标 URL 的 Footer 按钮共用样式；选择仅保留于当前编辑会话，重新加载 YAML 不会恢复。保留原生 Quartz 署名，每个 Footer 实例都会显示；页面覆盖排除 `footer` 会影响所有实例。用原有 Cloudflare 构建部署流程即可，无需安装插件。本编辑器不会写入你的站点。
 
-Native only: create multiple native Footer instances above the canvas and place each independently in any slot. Links within an instance share placement and visibility; use one instance per separately positioned button. No new plugin or unsupported YAML option is introduced. Choose native/text/outline/filled/pill styles in properties. When generating config, copy the separate stylesheet into the existing `quartz/styles/custom.scss` (replace earlier editor-generated rules), then rebuild/deploy normally. YAML alone cannot apply styles. Identical target URLs share styles; style choices are session-only and not restored from YAML. Native Quartz credits remain visible per instance, and excluding `footer` affects all instances. Preview clicks edit without navigation or network requests.
+「按钮外观」提供文字、本地图片、外链图标三种选择，不再提供内置图标选项。本地 PNG / JPEG / WebP 图片可代替可见文字，最大 1 MiB、2048 × 2048，直接嵌入导出的样式，不请求外部图床；本地上传不支持 SVG。请保留有意义的按钮名称，它仍是无障碍文字。图片、外链图标和样式均为当前会话设置，不写入 YAML，生成时必须同时复制样式；重新载入后需重新选择。相同 URL 共用外观，原生署名不会隐藏。
+
+**外链图标**：在组件属性的「按钮外观」选择「外链图标」，填写 HTTPS 图片直链（例如 `https://example.com/icon.svg`），而非图标网站的网页地址。支持浏览器可显示的 PNG、JPEG、WebP、SVG、ICO 等；外链 SVG 仅作为图片显示，不插入页面源码或执行脚本。编辑器不验证远端内容，实际支持情况取决于服务器响应和浏览器。只有主动选择并填写外链时，预览才会请求该图标服务（不发送页面 Referrer）；失败时预览恢复按钮名称。部署后也需要联网，并可能受防盗链或站点 CSP 限制。外链仅写入单独导出的 `custom.scss`，仍须复制样式；YAML 不保存此选择。部署后的 CSS 图片加载失败不会自动恢复文字，请确认图标链接可靠，或改用本地图片。
+
+外链图标模式会提示可到 [Appicons](https://appicons.co) 查找图标；填入的仍须是 HTTPS 图片直链，不是网站首页或详情页地址。该链接只是资源推荐，编辑器不会自动访问或接入其 API。
+
+Button appearance offers text, local images and external icon URLs; the built-in Icon option has been removed. For an external icon, choose **Button appearance → External icon URL** and enter a direct HTTPS image URL, including SVG or ICO. The panel links to [Appicons](https://appicons.co) for finding icons; paste a direct image URL rather than a web page. This is a resource recommendation, not an automatic integration or API request. SVG stays an image, never inline executable markup. Only explicit image opt-in contacts the image host; preview uses no referrer and falls back to the label on failure. The deployed CSS still depends on the host and site CSP and cannot restore text automatically on image failure. Copy the separate `custom.scss` export; YAML does not store appearance. Local images still work offline.
+
+Native only: use the yellow **New button · Footer** strip in Component tray to create independent native Footer instances, one button each, or add repeatable Spacers. Each instance has its own placement and visibility. Button settings are flat: no nested add/remove/reorder controls. Create another instance for another button. Imported multi-link Footers remain read-only and unchanged; arrange one link per Footer in YAML before reimporting to edit them here. Choose text, external icons or a local PNG/JPEG/WebP image (up to 1 MiB and 2048 × 2048; no SVG), plus native/text/outline/filled/pill styles. Local images embed in CSS without external requests; meaningful link labels remain accessible. Copy the separate stylesheet into the existing `quartz/styles/custom.scss` (replace earlier editor-generated rules), then rebuild/deploy normally. YAML alone cannot apply appearances. Identical target URLs share appearances; choices are session-only and not restored from YAML. Native Quartz credits remain visible per instance, and excluding `footer` affects all instances. No new plugin or unsupported YAML option is introduced.
+
+## 多个占位间隔与组内布局
+
+效果预览中，面板打开时会用醒目的虚线框标出当前选中的组件；关闭面板恢复干净预览，禁用或当前条件下不可见的组件不显示框。选中框不会改变布局或导出配置。新增 Footer 的「保存」与红色「删除」按钮在属性面板底部同一行，左侧保存、右侧删除，等宽排列；Spacer 保留底部全宽删除按钮。删除仅适用于本次新增的组件，导入的组件仍通过禁用控制。
+
+While a panel is open, Draft preview outlines the selected visible component with a scale-compensated dashed box. Closing the panel removes the outline; disabled or hidden selections have no box. Selection does not change layout or YAML. New Footer properties end with one equal-width action row: Save on the left and red Delete on the right. Spacers keep their full-width Delete button at the bottom. Only newly created instances can be deleted; imported components can still be disabled, not deleted.
+
+组件托盘顶部可重复创建原生 Spacer，每个实例独立设置位置、启用状态、条件及分组。本次新增的实例可以移除；导入的实例仍通过禁用控制。页面类型排除 `spacer` 会影响所有实例。
+
+先将组件加入分组，再设置 `groupOptions`：未分组时不显示整块组内布局及其说明；加入分组后自动显示，移出分组立即隐藏。已启用组件不显示分组名称字段，但保留已有分组关系和组内布局设置；未启用组件仍可通过分组名称入口分配分组。
+
+- `grow`：分配剩余主轴空间，默认否；`shrink`：空间不足时允许收缩，默认是。
+- `basis`：初始主轴尺寸，横向是宽度、纵向是高度，支持 `auto`、`160px`、`12rem`、`30%`、`calc(50% - 1rem)` 等；输入非法值不会覆盖有效配置。收缩、扩展或百分比父容器尺寸会影响最终大小。
+- `order`：较小数值先显示，支持负数；`align`：交叉轴对齐，可选拉伸。效果预览会应用这些属性。
+- `justify`：Quartz 原生输出的是 `justify-self`，浏览器在 Flex 中忽略它；编辑器保留此兼容字段并明确提示，不伪造效果。主轴间距请用分组 `gap`、`grow` 或 Spacer。
+
+Native Spacers are repeatable and independently placed. Group options and their explanations are omitted for ungrouped components. Joining a group reveals the options and leaving hides them. Enabled components omit the group assignment field without changing membership or member options; disabled components retain it. Defaults: grow false, shrink true, basis auto, order 0 and align center. Basis accepts valid CSS sizes and follows the main axis (row width / column height). Preview uses native flex properties. Quartz emits `justify-self`, which has no effect in CSS Flex; use group gap, grow or Spacer instead. Repeated floating-panel edits preserve document scroll while retaining independent panel scroll.
 
 组件目录为 18 个官方布局组件的 manifest 快照，不会联网发现新插件。未知插件保留在非布局列表。内置默认配置是公开的官方快照，不包含任何个人站点配置。
 
@@ -129,3 +167,9 @@ node tests/browser-check.mjs
 ## 适用版本
 
 针对 Quartz **v5**（`quartz.config.yaml` + `@quartz-community/*` 插件体系）。v4 的 `quartz.layout.ts` 是完全不同的结构，不适用。
+
+## 致谢 / Acknowledgements
+
+感谢 [Appicons](https://appicons.co) 提供图标查找资源，作为外链图标的推荐入口。图标的授权和使用条件以来源说明为准。
+
+Thanks to [Appicons](https://appicons.co) for the icon discovery resource recommended in external-icon mode. Check each source for its icon licensing and usage terms.

@@ -10,6 +10,80 @@ const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', impor
 const localPath = new URL('../fixtures/local/real-config.yaml', import.meta.url);
 const entryNamed = (state, name) => state.entries.find(entry => entry.shortName === name);
 
+test('new independent Footer instances require exactly one link without mutating on rejection', () => {
+  const state = core.load(defaultRaw);
+  const entry = core.addFooter(state);
+  const before = core.generate(state);
+  assert.throws(() => core.updateFooterLinks(state, entry.id, []), /只能包含一个按钮/);
+  assert.throws(() => core.updateFooterLinks(state, entry.id, [{ label: 'One', url: '/one' }, { label: 'Two', url: '/two' }]), /只能包含一个按钮/);
+  assert.equal(core.generate(state), before);
+  core.updateFooterLinks(state, entry.id, [{ label: 'One', url: '/one' }]);
+  assert.equal(entry.footerLinks.length, 1);
+  assert.equal(entryNamed(core.load(core.generate(state)), 'footer').footerLinks.length, 1);
+});
+
+test('multiple native Spacers compose with Footer append, groups, removal and reimport', () => {
+  const state = core.load(defaultRaw);
+  state.renumber = false;
+  const first = core.addSpacer(state);
+  const footer = core.addFooter(state);
+  const second = core.addSpacer(state);
+  core.place(state, first.id, 'header', undefined, 'space-row');
+  core.updateEntry(state, first.id, { layout: { ...first.layout, groupOptions: { grow: true, shrink: false, basis: '160px', order: -2, align: 'stretch', justify: 'between' } } });
+  core.place(state, second.id, 'right');
+  core.updateEntry(state, second.id, { enabled: false });
+  const output = core.generate(state);
+  const loaded = core.load(output);
+  assert.equal(loaded.entries.filter(entry => entry.shortName === 'spacer').length, 3);
+  assert.equal(core.generate(loaded), output);
+  assert.match(output, /basis: "160px"/);
+  assert.deepEqual(plain(loaded.entries.find(entry => entry.layout?.group === 'space-row').layout.groupOptions), plain(first.layout.groupOptions));
+  assert.deepEqual(independent(defaultRaw, output).sort(), ['layout.groups.space-row', 'plugins']);
+  core.removeAddedSpacer(state, first.id);
+  core.removeAddedFooter(state, footer.id);
+  core.removeAddedSpacer(state, second.id);
+  delete state.groups['space-row'];
+  assert.equal(core.generate(state), defaultRaw);
+  assert.throws(() => core.removeAddedSpacer(state, entryNamed(state, 'spacer').id));
+});
+
+test('Footer icon and embedded raster styles stay separate from YAML and reject unsafe images', () => {
+  const state = core.load(defaultRaw);
+  const url = entryNamed(state, 'footer').footerLinks[0].url;
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jwZkAAAAASUVORK5CYII=';
+  assert.equal(core.validFooterImage(image), true);
+  const iconCss = core.footerStyles(state, { [url]: { style: 'pill', mode: 'icon', icon: 'star' } });
+  assert.match(iconCss, /::before/);
+  assert.match(iconCss, /font-size: 0/);
+  const imageCss = core.footerStyles(state, { [url]: { mode: 'image', image } });
+  assert.match(imageCss, /background: url\("data:image\/png;base64,/);
+  for (const unsafe of ['https://example.org/icon.png', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,abc', image + '"; color: red', 'data:image/png;base64,' + 'A'.repeat(1400001)]) {
+    assert.equal(core.validFooterImage(unsafe), false);
+    assert.equal(core.footerStyles(state, { [url]: { mode: 'image', image: unsafe } }), '');
+  }
+  assert.equal(core.footerStyles(state, { [url]: { mode: 'text', image, icon: 'star' } }), '');
+  assert.equal(core.generate(state), defaultRaw);
+});
+
+test('external Footer icons validate HTTPS URLs and export safe CSS without YAML changes', () => {
+  const state = core.load(defaultRaw);
+  const url = entryNamed(state, 'footer').footerLinks[0].url;
+  for (const remoteUrl of ['https://icons.example/github.svg', 'https://cdn.example:8443/icon.png?color=%23fff&size=24', 'https://icons.example/image?name=(home);v=1']) {
+    assert.equal(core.validFooterIconUrl(remoteUrl), true);
+    assert.equal(core.footerAppearance({ mode: 'remote', remoteUrl }).image, remoteUrl);
+    const styles = core.footerStyles(state, { [url]: { mode: 'remote', remoteUrl } });
+    assert.match(styles, /background: url\("https:\/\//);
+    assert.match(styles, /font-size: 0/);
+    assert.doesNotMatch(styles, /undefined|<script/);
+    assert.equal(core.footerStyles(state, { [url]: { mode: 'text', remoteUrl } }), '');
+  }
+  for (const remoteUrl of ['http://icons.example/a.svg', '//icons.example/a.svg', 'javascript:alert(1)', 'data:image/svg+xml;base64,PHN2Zz4=', 'file:///icon.png', 'https://user:pass@icons.example/a.svg', 'https://icons.example/a";color:red', 'https://icons.example/a\\b', 'https://icons.example/${bad}', 'https://-bad.example/icon', 'https://icons.example:99999/a', 'https://icons.example/a\n', 'https://icons.example/' + 'x'.repeat(4096)]) {
+    assert.equal(core.validFooterIconUrl(remoteUrl), false, remoteUrl);
+    assert.equal(core.footerStyles(state, { [url]: { mode: 'remote', remoteUrl } }), '');
+  }
+  assert.equal(core.generate(state), defaultRaw);
+});
+
 test('multiple native Footer instances keep independent placement and round-trip without new plugin options', () => {
   const state = core.load(defaultRaw);
   state.renumber = false;

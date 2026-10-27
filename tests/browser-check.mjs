@@ -29,10 +29,39 @@ const openPanel = async id => {
 const closePanel = async () => {
   if (await page.locator('.panel.is-pinned').count()) await page.locator('[data-action="close-tool-panel"]').click();
 };
+const assertDeleteButton = async action => {
+  await page.locator('#property-enabled').uncheck();
+  for (const locale of ['zh-CN', 'en']) {
+    await page.locator('#language-select').selectOption(locale);
+    const button = page.locator(`[data-action="${action}"]`);
+    assert.equal(await button.evaluate(node => (node.closest('.component-actions') || node).parentElement.lastElementChild === (node.closest('.component-actions') || node)), true, 'Actions are the last item in the properties panel');
+    assert.equal(await button.textContent(), locale === 'zh-CN' ? '删除' : 'Delete');
+    const geometry = await button.evaluate(node => {
+      const field = document.getElementById('property-group');
+      const buttonRect = node.getBoundingClientRect();
+      const fieldRect = field.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const actions = node.closest('.component-actions');
+      const save = actions?.querySelector('[data-action="footer-link-save"]');
+      const saveRect = save?.getBoundingClientRect();
+      return { width: buttonRect.width, height: buttonRect.height, fieldWidth: fieldRect.width, fieldHeight: fieldRect.height, color: style.color, border: style.borderTopColor, rowWidth: actions?.getBoundingClientRect().width ?? buttonRect.width, sameRow: !saveRect || Math.abs(saveRect.top - buttonRect.top) < 1, equalWidth: !saveRect || Math.abs(saveRect.width - buttonRect.width) < 1, ordered: !saveRect || saveRect.right < buttonRect.left };
+    });
+    assert.ok(Math.abs(geometry.rowWidth - geometry.fieldWidth) < 1, 'Actions fill the panel like the group input');
+    assert.equal(geometry.sameRow && geometry.equalWidth && geometry.ordered, true, 'Save and Delete share an equal-width row, Save first');
+    assert.ok(Math.abs(geometry.height - geometry.fieldHeight) < 1, 'Delete matches the group input height');
+    assert.equal(geometry.border, geometry.color);
+    const channels = geometry.color.match(/\d+/g).map(Number);
+    assert.ok(channels[0] > channels[1] && channels[0] > channels[2], 'Delete uses the red danger color');
+  }
+  await page.locator('#property-enabled').check();
+};
 const selectCard = name => ({ selectOption: async value => {
   const selector = page.getByRole('combobox', { name: `移动 ${name} 到槽位`, exact: true });
-  if (!await selector.isVisible()) await openPanel('tray-panel');
-  await selector.selectOption(value);
+  if (await selector.isVisible()) { await selector.selectOption(value); return; }
+  await openPanel('tray-panel');
+  await page.getByRole('button', { name: `编辑 ${name}`, exact: true }).click();
+  await page.locator('#property-position').selectOption(value);
+  await page.locator('#property-enabled').check();
 } });
 const loadPaste = async text => {
   await closePanel();
@@ -77,6 +106,11 @@ try {
   console.log('PASS default snapshot, offline file://, no-op output');
 
   await page.locator('#renumber-priorities').uncheck();
+  await openPanel('tray-panel');
+  await page.getByRole('button', { name: '编辑 关系图谱', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await page.locator('#property-enabled').check();
+  await closePanel();
   await page.locator('#load-default').focus();
   let found = false;
   for (let count = 0; count < 200; count++) {
@@ -91,6 +125,15 @@ try {
   await page.waitForTimeout(100);
   assert.match(await status(), /关系图谱 已移至 左侧栏/);
   assert.equal(await page.locator('#slot-left').getByRole('group', { name: '关系图谱 组件', exact: true }).count(), 1);
+  assert.equal(await page.locator('.card [data-action="move"], .card-controls button').count(), 0, 'Component cards have no up/down buttons');
+  const keyboardCard = page.locator('#slot-left').getByRole('group', { name: '关系图谱 组件', exact: true });
+  const originalOrder = await page.locator('#slot-left [data-entry-id]').evaluateAll(nodes => nodes.map(node => node.dataset.entryId));
+  await keyboardCard.focus();
+  await page.keyboard.press('Alt+ArrowUp');
+  const reordered = await page.locator('#slot-left [data-entry-id]').evaluateAll(nodes => nodes.map(node => node.dataset.entryId));
+  assert.notDeepEqual(reordered, originalOrder, 'Keyboard shortcut reorders without visible arrow controls');
+  await page.keyboard.press('Alt+ArrowDown');
+  assert.deepEqual(await page.locator('#slot-left [data-entry-id]').evaluateAll(nodes => nodes.map(node => node.dataset.entryId)), originalOrder);
   const keyboardOutput = await generate();
   assert.ok(independent(raw, keyboardOutput).every(path => path.includes('.layout.')));
   await closeOutput();
@@ -153,7 +196,8 @@ try {
   console.log('PASS untrusted text escaped and clipboard fallback');
 
   await loadPaste(raw.replace('position: right', 'position: body'));
-  assert.match(await page.locator('#component-tray').textContent(), /无效槽位 body/);
+  await openPanel('tray-panel');
+  assert.equal(await page.locator('#component-tray').getByRole('button', { name: '编辑 文章目录', exact: true }).count(), 1);
   await selectCard('文章目录').selectOption('right');
   independent(raw, await generate());
   await closeOutput();
@@ -178,7 +222,7 @@ try {
 
   await page.locator('#language-select').selectOption('en');
   assert.equal(await page.locator('html').getAttribute('lang'), 'en');
-  assert.match(await page.title(), /Quartz Layout Editor 0\.3/);
+  assert.match(await page.title(), /Quartz Layout Editor 0\.4/);
   assert.equal(await page.locator('#generate-config').textContent(), 'Generate config');
   assert.match(await page.locator('#project-link').textContent(), /Project repository/);
   assert.match(await page.locator('#guide-panel').textContent(), /Page Title is the name/);
@@ -562,6 +606,7 @@ try {
   await page.locator('#board-effect').click();
   await page.locator('#tool-tray-panel').click();
   await page.screenshot({ path: join(screenshotDirectory, 'persistent-tools-mobile.png') });
+  await page.setViewportSize({ width: 390, height: 640 });
   const pinnedGrip = page.locator('#component-tray .drag-grip').first();
   await pinnedGrip.scrollIntoViewIfNeeded();
   const pinnedGripBounds = await pinnedGrip.boundingBox();
@@ -838,58 +883,56 @@ try {
   assert.equal(await page.locator('#footer-link-label-0').inputValue(), 'GitHub');
   assert.equal(await page.locator('#footer-link-url-0').inputValue(), 'https://github.com/buzhidao10068/quartz-layout-editor');
   assert.doesNotMatch(await page.locator('#footer-links-editor').textContent(), /Discord/);
-  await page.locator('[data-action="footer-link-add"]').click();
-  await page.locator('#footer-link-label-1').fill('Example Link');
-  await page.locator('#footer-link-url-1').fill('/example');
-  await page.locator('[data-action="footer-link-save"][data-index="1"]').click();
-  await page.locator('[data-action="footer-link-add"]').click();
-  await page.locator('#footer-link-label-2').fill('关于我们 <&"');
-  await page.locator('#footer-link-url-2').fill('/about#team');
-  await page.locator('[data-action="footer-link-save"][data-index="2"]').click();
-  assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link="2"]').textContent(), '关于我们 <&"');
-  assert.match(await page.locator('[data-effect-source="footer"] [data-footer-link="2"]').getAttribute('title'), /\/about#team/);
-  await page.locator('[data-effect-source="footer"] [data-footer-link="2"]').click();
+  assert.equal(await page.locator('[data-action="footer-link-add"], [data-action="footer-link-remove"], [data-action="footer-link-up"], [data-action="footer-link-down"]').count(), 0);
+  await page.locator('#footer-link-label-0').fill('关于我们 <&"');
+  await page.locator('#footer-link-url-0').fill('/about#team');
+  await page.locator('[data-action="footer-link-save"][data-index="0"]').click();
+  assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link="0"]').textContent(), '关于我们 <&"');
+  assert.match(await page.locator('[data-effect-source="footer"] [data-footer-link="0"]').getAttribute('title'), /\/about#team/);
+  await closePanel();
+  await page.locator('[data-effect-source="footer"] [data-footer-link="0"]').click();
   assert.equal(await page.locator('#board-effect').getAttribute('aria-pressed'), 'true');
-  assert.equal(await page.locator('#footer-link-label-2').inputValue(), '关于我们 <&"');
-  await page.locator('#footer-link-url-2').fill('javascript:alert(1)');
-  await page.locator('[data-action="footer-link-save"][data-index="2"]').click();
+  assert.equal(await page.locator('#footer-link-label-0').inputValue(), '关于我们 <&"');
+  await page.locator('#footer-link-url-0').fill('javascript:alert(1)');
+  await page.locator('[data-action="footer-link-save"][data-index="0"]').click();
   assert.match(await status(), /地址/);
-  await page.locator('#footer-link-url-2').fill('/about#team');
-  await page.locator('[data-action="footer-link-save"][data-index="2"]').click();
-  await page.locator('[data-action="footer-link-up"][data-index="2"]').click();
-  assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link="1"]').textContent(), '关于我们 <&"');
-  await page.locator('[data-action="footer-link-remove"][data-index="2"]').click();
+  await page.locator('#footer-link-url-0').fill('/about#team');
+  await page.locator('[data-action="footer-link-save"][data-index="0"]').click();
   const footerOutput = await generate();
   assert.ok(independent(raw, footerOutput).every(path => /\.options\.links|\.layout\.priority/.test(path)));
   await closeOutput();
   await page.locator('#language-select').selectOption('en');
-  assert.match(await page.locator('#footer-links-editor').textContent(), /Special child · footer links/);
+  assert.match(await page.locator('#footer-links-editor').textContent(), /Each independent component has one button/);
   await openPanel('properties-panel');
-  assert.equal(await page.locator('#footer-link-label-1').inputValue(), '关于我们 <&"');
-  await page.locator('#footer-link-url-1').fill('/about#updated');
+  assert.equal(await page.locator('#footer-link-label-0').inputValue(), '关于我们 <&"');
+  await page.locator('#footer-link-url-0').fill('/about#updated');
   await page.locator('#language-select').selectOption('zh-CN');
-  assert.equal(await page.locator('#footer-link-url-1').inputValue(), '/about#updated');
-  await page.locator('[data-action="footer-link-save"][data-index="1"]').focus();
+  assert.equal(await page.locator('#footer-link-url-0').inputValue(), '/about#updated');
+  await page.locator('[data-action="footer-link-save"][data-index="0"]').focus();
   await page.keyboard.press('Enter');
-  assert.match(await page.locator('[data-effect-source="footer"] [data-footer-link="1"]').getAttribute('title'), /\/about#updated/);
+  assert.match(await page.locator('[data-effect-source="footer"] [data-footer-link="0"]').getAttribute('title'), /\/about#updated/);
   await page.locator('#property-enabled').uncheck();
   assert.equal(await page.locator('[data-effect-source="footer"]').count(), 0);
   await page.locator('#property-enabled').check();
-  assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link]').count(), 2);
+  assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link]').count(), 1);
   await page.locator('#footer-links-editor').screenshot({ path: join(screenshotDirectory, 'footer-buttons-editor.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('#board-edit').click();
-  assert.equal(await page.locator('#slot-footer [data-footer-child]').count(), 2);
+  assert.equal(await page.locator('#slot-footer .footer-components, #slot-footer [data-footer-child]').count(), 0);
   await page.locator('#language-select').selectOption('zh-CN');
-  console.log('PASS content-sized preview disclosures, footer child CRUD/reorder, safe escaped preview navigation, bilingual/mobile UI and targeted YAML');
+  console.log('PASS content-sized preview disclosures, flat single-button settings, safe escaped preview navigation, bilingual/mobile UI and targeted YAML');
 
   await loadPaste(raw);
   await page.locator('#language-select').selectOption('en');
   await page.locator('#renumber-priorities').uncheck();
+  await openPanel('tray-panel');
   await page.locator('[data-action="footer-instance-add"]').focus();
+  const beforeNewFooter = await page.evaluate(() => scrollY);
   await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#property-enabled').isChecked(), false, 'Keyboard creation leaves the new Footer disabled');
+  assert.equal(await page.evaluate(() => scrollY), beforeNewFooter, 'Disabled creation does not move the document');
   await page.locator('#footer-link-label-0').fill('About native');
   await page.locator('#footer-link-url-0').fill('/about-native');
   await page.locator('[data-action="footer-link-save"][data-index="0"]').click();
@@ -900,6 +943,7 @@ try {
   assert.equal(await nativeButton.textContent(), 'About native');
   assert.equal(await nativeButton.evaluate(node => getComputedStyle(node).borderRadius), '999px');
   await closePanel();
+  await openPanel('tray-panel');
   await page.locator('[data-action="footer-instance-add"]').click();
   await page.locator('#property-position').selectOption('left');
   await page.locator('#footer-style-0').selectOption('outline');
@@ -919,6 +963,7 @@ try {
   assert.match(await page.locator('#copy-status').textContent(), /[Ss]tyles/);
   await page.locator('[data-action="close-output"]').click();
   await openPanel('properties-panel');
+  await assertDeleteButton('footer-instance-remove');
   await page.locator('[data-action="footer-instance-remove"]').click();
   assert.equal(await page.locator('[data-effect-source="footer"]').count(), 2);
   await nativeButton.click();
@@ -931,6 +976,377 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('#language-select').selectOption('zh-CN');
   console.log('PASS native multiple Footer instances, independent slots, keyboard add/remove, style preview and separate SCSS export without new plugins');
+
+  await loadPaste(raw);
+  await page.locator('#language-select').selectOption('en');
+  await page.locator('#board-effect').click();
+  await openPanel('tray-panel');
+  assert.equal(await page.locator('#tray-panel .component-create [data-action="footer-instance-add"]').count(), 1);
+  assert.equal(await page.locator('#layout-board [data-action="footer-instance-add"]').count(), 0);
+  await page.locator('#spacer-instance-add').click();
+  assert.match(await page.locator('#properties-panel').textContent(), /Spacer/);
+  for (const key of ['grow', 'shrink', 'basis', 'order', 'align', 'justify']) assert.equal(await page.locator(`#property-${key}`).count(), 0, `Ungrouped properties omit ${key}`);
+  assert.equal(await page.locator('#property-enabled').isChecked(), false, 'Click creation leaves the new Spacer disabled');
+  assert.equal(await page.locator('#property-group').isVisible(), true, 'Disabled new components retain the group field');
+  assert.doesNotMatch(await page.locator('#properties-panel').textContent(), /Group options/);
+  await page.locator('#property-position').selectOption('header');
+  await page.locator('#property-enabled').uncheck();
+  assert.equal(await page.locator('#property-group').isVisible(), true, 'Disabled components retain the group assignment entry point');
+  await page.locator('#property-group').fill('spacing-demo');
+  await page.locator('#property-group').press('Tab');
+  assert.equal(await page.locator('#property-basis').isEnabled(), true);
+  assert.equal(await page.locator('#property-group').count(), 0, 'Joining a group enables the component and hides the group field');
+  await page.locator('#property-enabled').uncheck();
+  await page.locator('#property-group').fill('');
+  await page.locator('#property-group').press('Tab');
+  assert.equal(await page.locator('#property-basis').count(), 0, 'Leaving a group removes its member controls immediately');
+  await page.locator('#board-edit').click();
+  await page.locator('#language-select').selectOption('zh-CN');
+  assert.equal(await page.locator('#property-basis').count(), 0);
+  assert.doesNotMatch(await page.locator('#properties-panel').textContent(), /组内布局（groupOptions）/);
+  assert.equal(await page.locator('#property-group').count(), 0);
+  await page.locator('#property-enabled').uncheck();
+  await page.locator('#property-group').fill('spacing-demo');
+  await page.locator('#property-group').press('Tab');
+  assert.equal(await page.locator('#property-basis').isVisible(), true, 'Joining a group reveals member controls in Edit layout');
+  const groupedYaml = await generate();
+  await page.locator('[data-action="close-output"]').click();
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    for (const locale of ['en', 'zh-CN']) {
+      await page.locator('#language-select').selectOption(locale);
+      for (const view of ['edit', 'effect']) {
+        await page.locator(`#board-${view}`).click();
+        await openPanel('properties-panel');
+        assert.equal(await page.locator('#property-enabled').isChecked(), true);
+        assert.equal(await page.locator('#property-group, label[for="property-group"], #property-group-hint').count(), 0);
+        assert.equal(await page.locator('#property-basis').isVisible(), true, 'Enabled grouped components keep their member options');
+      }
+    }
+  }
+  assert.equal(await generate(), groupedYaml, 'Group-field visibility and view/locale changes preserve configuration');
+  await page.locator('[data-action="close-output"]').click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openPanel('properties-panel');
+  await page.locator('#property-enabled').uncheck();
+  assert.equal(await page.locator('#property-group').inputValue(), 'spacing-demo', 'Hiding the field preserves group membership');
+  await page.locator('#property-enabled').check();
+  assert.equal(await page.locator('#property-group').count(), 0);
+  await page.locator('#language-select').selectOption('en');
+  await page.locator('#board-effect').click();
+  for (const [selector, value] of [['#property-grow', 'false'], ['#property-shrink', 'false'], ['#property-align', 'stretch'], ['#property-justify', 'between']]) await page.locator(selector).selectOption(value);
+  assert.match(await page.locator('#property-justify-hint').textContent(), /ignore in Flex/);
+  await page.locator('#property-basis').fill('160px');
+  await page.locator('#property-basis').press('Tab');
+  await page.locator('#property-order').fill('-2');
+  await page.locator('#property-order').press('Tab');
+  const spacerMember = page.locator('[data-effect-group="spacing-demo"] > [data-effect-member]').first();
+  assert.deepEqual(await spacerMember.evaluate(node => { const css = getComputedStyle(node); return [css.flexBasis, css.flexGrow, css.flexShrink, css.order, css.alignSelf]; }), ['160px', '0', '0', '-2', 'stretch']);
+  assert.ok(Math.abs(await spacerMember.evaluate(node => node.offsetWidth) - 160) < 2);
+  await openPanel('groups-panel');
+  await page.locator('#edit-group').selectOption('spacing-demo');
+  await page.locator('#group-direction').selectOption('column');
+  assert.ok(Math.abs(await spacerMember.evaluate(node => node.offsetHeight) - 160) < 2, 'Column basis determines initial height');
+  await page.locator('#group-direction').selectOption('row');
+  await openPanel('properties-panel');
+  await page.locator('#property-basis').fill('160');
+  await page.locator('#property-basis').press('Tab');
+  assert.match(await status(), /valid non-negative CSS basis/);
+  assert.equal(await spacerMember.evaluate(node => getComputedStyle(node).flexBasis), '160px');
+  await page.locator('#property-basis').fill('25%');
+  await page.locator('#property-basis').press('Tab');
+  assert.equal(await spacerMember.evaluate(node => getComputedStyle(node).flexBasis), '25%');
+  await openPanel('tray-panel');
+  await page.locator('#spacer-instance-add').click();
+  await page.locator('#property-position').selectOption('right');
+  assert.equal(await page.locator('[data-effect-source="spacer"]').count(), 3);
+  const spacerYaml = await generate();
+  assert.equal((spacerYaml.match(/source: [^\n]*spacer/g) || []).length, 3);
+  assert.match(spacerYaml, /basis: "25%"/);
+  assert.match(spacerYaml, /shrink: false/);
+  await page.locator('[data-action="close-output"]').click();
+  await openPanel('properties-panel');
+  await assertDeleteButton('spacer-instance-remove');
+  await page.locator('[data-action="spacer-instance-remove"]').focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('[data-effect-source="spacer"]').count(), 2);
+  console.log('PASS tray creation, multiple native Spacers, independent placement/removal and real group basis/grow/shrink/order/align with validation');
+
+  await page.locator('#footer-instance-add').click();
+  assert.deepEqual(await page.locator('#footer-visual-0 option').evaluateAll(nodes => nodes.map(node => node.value)), ['text', 'image', 'remote']);
+  assert.equal(await page.locator('#property-enabled').isChecked(), false);
+  await page.locator('#property-enabled').check();
+  assert.equal(await page.locator('[data-footer-icon]').count(), 0);
+  let visualButton = page.locator('[data-effect-source="footer"] [data-footer-link]').last();
+  assert.equal(await visualButton.textContent(), 'New button');
+  await page.locator('#footer-visual-0').selectOption('image');
+  const imageData = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16; const drawing = canvas.getContext('2d'); drawing.fillStyle = '#226655'; drawing.fillRect(0, 0, 16, 16); return canvas.toDataURL('image/png'); });
+  await page.locator('#footer-image-0').setInputFiles({ name: 'local-button.png', mimeType: 'image/png', buffer: Buffer.from(imageData.split(',')[1], 'base64') });
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-effect-source="footer"] img.footer-visual')));
+  assert.equal(await visualButton.locator('img').getAttribute('src'), imageData);
+  assert.equal(await visualButton.locator('img').evaluate(node => node.complete && node.naturalWidth === 16), true);
+  assert.equal(await visualButton.evaluate(node => getComputedStyle(node).minHeight), '44px');
+  const imageYaml = await generate();
+  assert.doesNotMatch(imageYaml, /data:image|buttonStyle|image:/);
+  const imageStyles = await page.locator('#output-styles').inputValue();
+  assert.ok(imageStyles.includes(imageData));
+  const nativeImage = await page.evaluate(styles => {
+    const style = document.createElement('style'); style.textContent = styles;
+    const footer = document.createElement('footer'); footer.innerHTML = '<ul><li><a href="/about">New button</a></li></ul>';
+    document.head.append(style); document.body.append(footer);
+    const link = footer.querySelector('a');
+    const result = [getComputedStyle(link).fontSize, getComputedStyle(link, '::before').backgroundImage, link.textContent];
+    footer.remove(); style.remove(); return result;
+  }, imageStyles);
+  assert.equal(nativeImage[0], '0px');
+  assert.ok(nativeImage[1].includes('data:image/png;base64,'));
+  assert.equal(nativeImage[2], 'New button');
+  await page.locator('[data-action="close-output"]').click();
+  await openPanel('properties-panel');
+  await page.locator('#footer-image-0').setInputFiles({ name: 'unsafe.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg onload="alert(1)"></svg>') });
+  assert.match(await status(), /valid PNG, JPEG or WebP/);
+  assert.equal(await visualButton.locator('img').getAttribute('src'), imageData);
+  await page.locator('#language-select').selectOption('zh-CN');
+  await page.locator('#footer-style-0').selectOption('pill');
+  await page.locator('#language-select').selectOption('en');
+  assert.equal(await page.locator('#footer-visual-0').inputValue(), 'image');
+  assert.equal(await page.locator('#footer-style-0').inputValue(), 'pill');
+  await page.locator('#footer-links-editor').screenshot({ path: join(screenshotDirectory, 'native-image-button-editor.png') });
+  await closePanel();
+  await page.locator('.effect-scroll').screenshot({ path: join(screenshotDirectory, 'native-image-button-preview.png') });
+  console.log('PASS text/local/external appearance choices without built-in icons, accessible image labels, native CSS export and raster/SVG safety without YAML options or image requests');
+
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    for (const edge of ['bottom', 'top']) {
+      if (await page.locator('html').getAttribute('data-tool-dock') !== edge) await page.locator('#dock-position').click();
+      for (const id of ['tray-panel', 'plugins-panel', 'properties-panel', 'groups-panel', 'pages-panel']) {
+        await openPanel(id);
+        if (id === 'groups-panel') await page.locator('#edit-group').selectOption('toolbar');
+        await page.evaluate(() => scrollTo(0, Math.min(450, document.documentElement.scrollHeight - innerHeight)));
+        await page.waitForTimeout(50);
+        const before = await page.evaluate(() => scrollY);
+        for (let iteration = 0; iteration < 5; iteration++) {
+          if (id === 'properties-panel') { await page.locator('#property-priority').fill(String(70 + iteration)); await page.locator('#property-priority').press('Tab'); }
+          else if (id === 'groups-panel') { await page.locator('#group-direction').selectOption(iteration % 2 ? 'row' : 'column'); }
+          else if (id === 'pages-panel') { await page.locator('#page-template').selectOption(iteration % 2 ? 'default' : 'full-width'); }
+          else if (id === 'plugins-panel') { const checkbox = page.locator('#plugins-panel input[type="checkbox"]').first(); await checkbox.setChecked(!await checkbox.isChecked()); }
+          else { await page.locator('#language-select').selectOption(iteration % 2 ? 'en' : 'zh-CN'); }
+          await page.waitForTimeout(40);
+          assert.ok(Math.abs(await page.evaluate(() => scrollY) - before) <= 2, `No cumulative page drift: ${id} ${edge} ${viewport.width}`);
+        }
+      }
+    }
+    await closePanel();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('#language-select').selectOption('zh-CN');
+  console.log('PASS repeated effect edits in all five floating panels preserve page scroll on desktop/mobile at both dock edges');
+
+  await loadPaste(raw);
+  await page.locator('#language-select').selectOption('en');
+  await page.locator('#board-edit').click();
+  await page.locator('#slot-left').evaluate(node => node.scrollIntoView({ block: 'start' }));
+  await openPanel('tray-panel');
+  assert.equal(await page.locator('.frame [data-control="card-group"]').count(), 0, 'Canvas cards do not repeat group selectors');
+  assert.ok(await page.locator('.frame .group-container').filter({ hasText: 'toolbar' }).count() > 0, 'Keep the shared toolbar group');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const locale of ['zh-CN', 'en']) {
+      await page.locator('#language-select').selectOption(locale);
+      assert.equal(await page.locator('#component-tray select, #component-tray .card-badges, #component-tray .component-description, #component-tray .footer-components').count(), 0);
+      for (const row of await page.locator('#tray-panel .tray-strip').all()) {
+        assert.equal(await row.evaluate(node => getComputedStyle(node).whiteSpace), 'nowrap');
+        assert.ok((await row.boundingBox()).height <= 38);
+      }
+      const colors = await page.locator('#tray-panel .tray-strip').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor));
+      assert.equal(new Set(colors).size, 3, 'Existing, new Footer and new Spacer rows use distinct colors');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
+  await page.screenshot({ path: join(screenshotDirectory, 'compact-tray-mobile.png') });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('#slot-left').evaluate(node => node.scrollIntoView({ block: 'start' }));
+  await page.locator('#tray-panel > .panel-body').evaluate(node => { node.scrollTop = 0; });
+  await page.screenshot({ path: join(screenshotDirectory, 'compact-tray-desktop.png') });
+  const creation = await page.locator('#footer-instance-add').boundingBox();
+  const destination = await page.locator('#slot-left > .slot-body').boundingBox();
+  await page.mouse.move(creation.x + creation.width / 2, creation.y + creation.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(destination.x + 20, Math.max(100, destination.y + 30), { steps: 12 });
+  await page.mouse.up();
+  assert.equal(await page.locator('#slot-left [data-footer-child]').count(), 0, 'Independent buttons have no nested child cards');
+  assert.equal(await page.locator('#slot-left [data-entry-id]').count(), 7, 'Dragging a creation row creates one native Footer in the target slot');
+  const createdYaml = await generate();
+  assert.equal((createdYaml.match(/source: [^\n]*footer/g) || []).length, 2);
+  await page.locator('[data-action="close-output"]').click();
+  await openPanel('tray-panel');
+  const spacing = await page.locator('#spacer-instance-add').boundingBox();
+  await page.mouse.move(spacing.x + 20, spacing.y + 15);
+  await page.mouse.down();
+  await page.mouse.move(spacing.x - 30, spacing.y + 20, { steps: 3 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  assert.equal(await generate(), createdYaml, 'Cancelling a creation drag does not create an instance');
+  await page.locator('[data-action="close-output"]').click();
+  await openPanel('tray-panel');
+  const creationTransfer = await page.evaluateHandle(() => new DataTransfer());
+  await page.locator('#spacer-instance-add').dispatchEvent('dragstart', { dataTransfer: creationTransfer });
+  await page.locator('#slot-header > .slot-body').dispatchEvent('drop', { dataTransfer: creationTransfer, clientY: 0 });
+  assert.equal(await page.locator('#slot-header [data-entry-id]').count(), 1, 'Native fallback can create a Spacer in a slot');
+  console.log('PASS compact name-only tray rows, three semantic colors, bilingual/mobile bounds, pointer-created Footer, cancelled creation and native-created Spacer');
+
+  await loadPaste(raw);
+  await page.locator('#language-select').selectOption('en');
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    for (const edge of ['bottom', 'top']) {
+      if (await page.locator('html').getAttribute('data-tool-dock') !== edge) await page.locator('#dock-position').click();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const headerTop = await page.locator('.topbar').evaluate(node => node.getBoundingClientRect().top);
+      if (edge === 'bottom') assert.equal(headerTop, 0, 'No blank space above app-shell with the bottom dock');
+      else assert.ok(headerTop > (await page.locator('.board-modes').boundingBox()).height, 'Only the top dock gets necessary clearance');
+      for (const id of toolPanels) {
+        await openPanel(id);
+        const beforeClose = await page.evaluate(() => scrollY);
+        await page.locator(`#${id}-summary`).click({ position: { x: 20, y: 15 } });
+        assert.equal(await page.locator('.panel.is-pinned').count(), 0, `${id}: the entire heading closes the panel`);
+        assert.equal(await page.evaluate(() => scrollY), beforeClose);
+      }
+      for (const view of ['edit', 'effect']) {
+        await page.locator(`#board-${view}`).click();
+        await openPanel('tray-panel');
+        const beforeSelection = await page.evaluate(() => scrollY);
+        await page.getByRole('button', { name: 'Edit Tag List', exact: true }).click();
+        assert.equal(await page.locator('#tool-properties-panel').getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('#property-enabled').isChecked(), false, 'Clicking a tray row never enables it');
+        assert.equal(await page.locator('.effect-selected').count(), 0, 'Disabled selections have no preview outline');
+        assert.equal(await page.evaluate(() => scrollY), beforeSelection, 'Disabled selections never move the document');
+        const tagId = await page.locator('#selected-component').inputValue();
+        await page.locator('#property-enabled').check();
+        const enabledTarget = page.locator(view === 'edit' ? `.frame [data-entry-id="${tagId}"]` : `[data-effect-entry="${tagId}"]`);
+        const enableOffset = edge === 'top' ? (await page.locator('.board-modes').boundingBox()).y + (await page.locator('.board-modes').boundingBox()).height + 16 : 16;
+        const enabledPosition = await enabledTarget.evaluate((node, offset) => {
+          const documentTop = node.getBoundingClientRect().top + scrollY;
+          const maximumScroll = document.documentElement.scrollHeight - innerHeight;
+          return { actual: node.getBoundingClientRect().top, expected: documentTop - Math.min(maximumScroll, Math.max(0, documentTop - offset)) };
+        }, enableOffset);
+        assert.ok(Math.abs(enabledPosition.actual - enabledPosition.expected) < 3, `Manual enable scrolls to the component within document limits: ${view} ${edge} ${viewport.width}`);
+        const beforeDisable = await page.evaluate(() => scrollY);
+        await page.locator('#property-enabled').uncheck();
+        assert.equal(await page.evaluate(() => scrollY), await page.evaluate(previous => Math.min(previous, Math.max(0, document.documentElement.scrollHeight - innerHeight)), beforeDisable), 'Disabling preserves scroll within the shortened document limits');
+        const titleId = await page.locator('#selected-component option').filter({ hasText: 'Page Title' }).getAttribute('value');
+        await page.locator('#selected-component').selectOption(titleId);
+        assert.equal(await page.locator('#property-enabled').isChecked(), true);
+        const target = page.locator(view === 'edit' ? `.frame [data-entry-id="${titleId}"]` : `[data-effect-entry="${titleId}"]`);
+        const top = await target.evaluate(node => node.getBoundingClientRect().top);
+        const expected = edge === 'top' ? (await page.locator('.board-modes').boundingBox()).y + (await page.locator('.board-modes').boundingBox()).height + 16 : 16;
+        assert.ok(Math.abs(top - expected) < 3, `Enabled component is brought below the dock: ${view} ${edge} ${viewport.width}`);
+        if (view === 'effect') {
+          assert.equal(await page.locator('.effect-selected').count(), 1);
+          assert.equal(await target.evaluate(node => node.classList.contains('effect-selected')), true);
+          const outline = await target.evaluate(node => {
+            const style = getComputedStyle(node);
+            return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) * parseFloat(getComputedStyle(node.closest('.effect-page')).zoom) };
+          });
+          assert.equal(outline.style, 'dashed');
+          assert.ok(Math.abs(outline.width - 3) < .1, 'Selection outline stays clear after preview scaling');
+          await closePanel();
+          assert.equal(await page.locator('.effect-selected').count(), 0, 'Closing the panel restores the clean preview');
+          await openPanel('properties-panel');
+          assert.equal(await target.evaluate(node => node.classList.contains('effect-selected')), true);
+        }
+        await openPanel('groups-panel');
+        await page.locator('#edit-group').selectOption('toolbar');
+        const group = page.locator(view === 'edit' ? '[data-group-disclosure]' : '[data-effect-group]').filter({ hasText: view === 'edit' ? 'toolbar' : 'Search' }).first();
+        assert.ok(Math.abs((await group.boundingBox()).y - expected) < 3, `Group selection locates the actual container: ${view} ${edge} ${viewport.width}`);
+        await closePanel();
+        for (const type of ['footer', 'spacer']) {
+          await openPanel('tray-panel');
+          const beforeCreate = await page.evaluate(() => scrollY);
+          await page.locator(`#${type}-instance-add`).click();
+          assert.equal(await page.locator('#property-enabled').isChecked(), false, `${type} click creates disabled in ${view}`);
+          const createdId = await page.locator('#selected-component').inputValue();
+          assert.equal(await page.locator(`[data-effect-entry="${createdId}"], .frame [data-entry-id="${createdId}"]`).count(), 0);
+          assert.equal(await page.evaluate(() => scrollY), beforeCreate);
+          await page.locator(`[data-action="${type}-instance-remove"]`).click();
+        }
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('#board-edit').click();
+  await openPanel('tray-panel');
+  await page.locator('#footer-instance-add').click();
+  assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 1);
+  assert.equal(await page.locator('[data-action="footer-link-add"], .frame [data-footer-child]').count(), 0);
+  await page.locator('#footer-links-editor').screenshot({ path: join(screenshotDirectory, 'single-button-settings.png') });
+  const legacy = raw.replace('        GitHub:', '        About: /about\n        GitHub:');
+  await loadPaste(legacy);
+  await page.getByRole('button', { name: 'Edit Footer', exact: true }).click();
+  assert.equal(await page.locator('.component-delete').count(), 0, 'Imported components cannot be deleted');
+  assert.match(await page.locator('#footer-links-editor').textContent(), /preserved read-only/);
+  assert.equal(await page.locator('#footer-links-editor input').count(), 0);
+  assert.equal(await generate(), legacy, 'Imported multiple links are never silently dropped');
+  await page.locator('[data-action="close-output"]').click();
+  console.log('PASS tray click without enable, explicit component/group navigation, whole-heading close, flat single buttons, preserved legacy Footer and no blank top margin on desktop/mobile at both dock edges');
+
+  const external = await browser.newContext({ offline: true, locale: 'en-US', viewport: { width: 1440, height: 1000 } });
+  try {
+    const externalPage = await external.newPage();
+    const iconRequests = [];
+    const externalErrors = [];
+    externalPage.on('pageerror', error => externalErrors.push(error.message));
+    externalPage.on('request', request => { if (/^https?:/.test(request.url())) iconRequests.push(request.url()); });
+    await external.route('https://icons.example/**', route => route.request().url().includes('missing') ? route.abort() : route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="teal"/></svg>' }));
+    await externalPage.goto(fileUrl);
+    await externalPage.locator('#board-effect').click();
+    await externalPage.locator('#tool-tray-panel').click();
+    await externalPage.locator('#footer-instance-add').click();
+    assert.equal(await externalPage.locator('#property-enabled').isChecked(), false);
+    await externalPage.locator('#property-enabled').check();
+    await externalPage.locator('#footer-visual-0').selectOption('remote');
+    const resource = externalPage.locator('#properties-panel a[href="https://appicons.co"]');
+    assert.equal(await resource.getAttribute('target'), '_blank');
+    assert.equal(await resource.getAttribute('rel'), 'noopener noreferrer');
+    assert.match(await externalPage.locator('#properties-panel').textContent(), /Find icons at Appicons/);
+    await externalPage.locator('#language-select').selectOption('zh-CN');
+    assert.match(await externalPage.locator('#properties-panel').textContent(), /可以到 Appicons 查找图标/);
+    await externalPage.locator('#language-select').selectOption('en');
+    const remoteField = externalPage.locator('#footer-remote-0');
+    const remoteButton = externalPage.locator('[data-effect-source="footer"] [data-footer-link]').last();
+    assert.match(await externalPage.locator('#properties-panel').textContent(), /require internet/);
+    assert.equal(iconRequests.length, 0, 'Choosing external mode alone makes no request');
+    await remoteField.fill('https://icons.example/github.svg?color=%23fff&size=24');
+    await remoteField.press('Tab');
+    await externalPage.waitForFunction(() => { const image = document.querySelector('[data-effect-source="footer"] img.footer-visual'); return image?.complete && image.naturalWidth === 24; });
+    assert.equal(await remoteButton.locator('img').getAttribute('referrerpolicy'), 'no-referrer');
+    assert.equal(await remoteButton.locator('.sr-only').textContent(), 'New button');
+    await remoteField.fill('javascript:alert(1)');
+    await remoteField.press('Tab');
+    assert.match(await externalPage.locator('#status-text').textContent(), /valid HTTPS icon URL/);
+    assert.ok((await remoteButton.locator('img').getAttribute('src')).startsWith('https://icons.example/'));
+    await remoteField.fill('https://icons.example/missing.svg');
+    await remoteField.press('Tab');
+    await externalPage.waitForFunction(() => document.querySelector('[data-effect-source="footer"] img.footer-visual')?.hidden === true);
+    assert.equal(await remoteButton.locator('.sr-only').count(), 0);
+    assert.match(await remoteButton.textContent(), /New button/);
+    await remoteField.fill('https://icons.example/github.svg');
+    await remoteField.press('Tab');
+    await externalPage.locator('#language-select').selectOption('zh-CN');
+    assert.equal(await remoteField.inputValue(), 'https://icons.example/github.svg');
+    assert.match(await externalPage.locator('#properties-panel').textContent(), /需联网/);
+    await externalPage.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await externalPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await externalPage.locator('[data-action="close-tool-panel"]').click();
+    await externalPage.locator('#generate-config').click();
+    assert.match(await externalPage.locator('#output-styles').inputValue(), /https:\/\/icons.example\/github.svg/);
+    assert.doesNotMatch(await externalPage.locator('#output-yaml').inputValue(), /icons.example|remoteUrl/);
+    assert.ok(iconRequests.length > 0 && iconRequests.every(url => url.startsWith('https://icons.example/')));
+    assert.deepEqual(externalErrors, []);
+    console.log('PASS opt-in external SVG icons, HTTPS validation, label fallback, bilingual/mobile controls and separate CSS export with isolated mocked requests');
+  } finally { await external.close(); }
 
   for (const [browserLocale, expected] of [['en-US', 'en'], ['zh-TW', 'zh-CN']]) {
     const clean = await browser.newContext({ offline: true, locale: browserLocale });
