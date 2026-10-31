@@ -10,19 +10,52 @@ const defaultRaw = readFileSync(new URL('../fixtures/default-config.yaml', impor
 const localPath = new URL('../fixtures/local/real-config.yaml', import.meta.url);
 const entryNamed = (state, name) => state.entries.find(entry => entry.shortName === name);
 
-test('full native footers accept multiple or no links while independent buttons stay single-link', () => {
+test('groups move as a unit without changing member options or relative priorities', () => {
+  for (const renumber of [true, false]) {
+    const state = core.load(defaultRaw);
+    state.renumber = renumber;
+    const group = core.slotEntries(state, 'left').find(item => item.kind === 'group');
+    assert.ok(group);
+    const before = group.members.map(entry => ({ id: entry.id, layout: plain(core.effectiveLayout(entry)) }));
+    core.placeGroup(state, group.name, 'left', 'header', 0);
+    assert.equal(core.slotEntries(state, 'left').some(item => item.kind === 'group' && item.name === group.name), false);
+    const moved = core.slotEntries(state, 'header')[0];
+    assert.equal(moved.name, group.name);
+    assert.deepEqual(moved.members.map(entry => ({ id: entry.id, layout: plain(core.effectiveLayout(entry)) })), before.map(item => ({ ...item, layout: { ...item.layout, position: 'header' } })));
+    assert.equal(core.generate(core.load(core.generate(state))), core.generate(state));
+    const snapshot = core.generate(state);
+    assert.throws(() => core.placeGroup(state, group.name, 'header', 'tray'));
+    assert.equal(core.generate(state), snapshot);
+  }
+});
+
+test('group reordering and moving into an existing same-name group preserve all members', () => {
+  const state = core.load(defaultRaw);
+  state.renumber = false;
+  const group = core.slotEntries(state, 'left').find(item => item.kind === 'group');
+  core.placeGroup(state, group.name, 'left', 'left', 0);
+  assert.equal(core.slotEntries(state, 'left')[0].name, group.name);
+  const member = core.addSpacer(state);
+  core.place(state, member.id, 'header', 0, group.name);
+  const ids = [...group.members.map(entry => entry.id), member.id].sort();
+  core.placeGroup(state, group.name, 'left', 'header', 0);
+  assert.deepEqual(plain(core.slotEntries(state, 'header')[0].members.map(entry => entry.id).sort()), ids);
+  assert.equal(member.enabled, true);
+});
+
+test('native footers accept multiple links while only customizable links can be created', () => {
   const state = core.load(defaultRaw);
   state.renumber = false;
   const original = entryNamed(state, 'footer');
   const originalSpan = plain(original.span);
-  const footer = core.addFooter(state, 'footer');
-  const second = core.addFooter(state, 'footer');
+  const footer = core.addFooter(state);
+  const second = core.addFooter(state);
   const button = core.addFooter(state);
   const spacer = core.addSpacer(state);
   const rows = [{ label: 'About <&"', url: '/about' }, { label: 'GitHub', url: 'https://github.com/example' }];
-  assert.equal(footer.footerKind, 'footer');
-  core.updateFooterLinks(state, footer.id, rows);
-  core.updateFooterLinks(state, second.id, []);
+  assert.equal(footer.footerKind, 'button');
+  core.updateFooterLinks(state, footer.id, [rows[0]]);
+  core.updateFooterLinks(state, second.id, [{ label: 'Other', url: '/other' }]);
   core.place(state, footer.id, 'header', undefined, 'footer-row');
   core.place(state, second.id, 'right');
   core.updateEntry(state, second.id, { enabled: false });
@@ -40,8 +73,8 @@ test('full native footers accept multiple or no links while independent buttons 
   assert.deepEqual(plain(original.span), originalSpan);
   assert.equal(new Set([footer.id, second.id, button.id, spacer.id]).size, 4);
   const imported = loaded.entries.find(entry => entry.layout?.group === 'footer-row');
-  assert.deepEqual(plain(imported.footerLinks), rows);
-  assert.equal(loaded.entries.find(entry => entry.layout?.position === 'right' && entry.footerLinks?.length === 0).enabled, false);
+  assert.deepEqual(plain(imported.footerLinks), [rows[0]]);
+  assert.equal(loaded.entries.find(entry => entry.layout?.position === 'right' && entry.footerLinks?.[0]?.url === '/other').enabled, false);
   core.updateFooterLinks(loaded, imported.id, [...rows, { label: 'Contact', url: 'mailto:hello@example.org' }]);
   assert.ok(independent(output, core.generate(loaded)).every(path => path.startsWith(`plugins.${imported.id}.options.links`)));
   core.removeAddedFooter(state, footer.id);
@@ -213,23 +246,13 @@ test('native custom.scss styles are separate, target actual Footer markup and es
   assert.match(core.footerStyles(state, {}), /footer:has\(> ul > li:only-child/);
 });
 
-test('new Footer buttons and full footers hide credits while imported full footers keep them', () => {
+test('customizable links hide credits while imported native footers keep them', () => {
   const state = core.load(defaultRaw);
   const button = core.addFooter(state);
   core.updateFooterLinks(state, button.id, [{ label: '独立按钮', url: '/independent' }]);
-  const full = core.addFooter(state, 'footer');
-  core.updateFooterLinks(state, full.id, [
-    { label: 'About', url: '/new-about' },
-    { label: 'Contact', url: '/new-contact' }
-  ]);
   const css = core.footerStyles(state, {});
   assert.match(css, /footer:has\(> ul > li:only-child > a\[href="\/independent"\]\) > p \{ display: none; \}/);
-  assert.match(css, /nth-child\(1\).*\/new-about.*nth-child\(2\).*\/new-contact/);
-  assert.match(css, /not\(:has\(> ul > li:nth-child\(3\)\)\) > p \{ display: none; \}/);
   assert.doesNotMatch(css, /<|\$\{|undefined/);
-  const emptyFull = core.addFooter(state, 'footer');
-  core.updateFooterLinks(state, emptyFull.id, []);
-  assert.match(core.footerStyles(state, {}), /footer:has\(> ul:empty\) > p \{ display: none; \}/);
   const importedLink = state.entries.find(entry => entry.footerKind === 'footer' && !entry.added).footerLinks[0].url;
   assert.equal(core.footerStyles(state, { [importedLink]: 'pill' }).includes(`href="${importedLink}"]) > p`), false);
 });

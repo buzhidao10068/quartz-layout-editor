@@ -23,6 +23,18 @@ const screenshotDirectory = process.env.SCREENSHOT_DIR || join(root, 'scratch', 
 mkdirSync(screenshotDirectory, { recursive: true });
 const assertNoErrors = () => assert.deepEqual(errors, []);
 const status = () => page.locator('#status-text').textContent();
+const assertCentered = async target => {
+  const result = await target.evaluate(node => {
+    const bounds = node.getBoundingClientRect();
+    const dock = document.querySelector('.board-modes').getBoundingClientRect();
+    const topDock = dock.top < innerHeight / 2;
+    const center = ((topDock ? dock.bottom + 16 : 16) + (topDock ? innerHeight - 16 : dock.top - 16)) / 2;
+    const documentCenter = scrollY + bounds.top + bounds.height / 2;
+    const maximum = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    return { actual: scrollY, expected: Math.min(maximum, Math.max(0, documentCenter - center)) };
+  });
+  assert.ok(Math.abs(result.actual - result.expected) < 3, 'Selection centers within dock-aware viewport and document scroll limits');
+};
 const blurFooterLink = async selector => {
   await page.locator(selector).press('Tab');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -226,7 +238,7 @@ try {
 
   await page.locator('#language-select').selectOption('en');
   assert.equal(await page.locator('html').getAttribute('lang'), 'en');
-  assert.match(await page.title(), /Quartz Layout Editor 0\.4/);
+  assert.match(await page.title(), /Quartz Layout Editor 0\.6/);
   assert.equal(await page.locator('#generate-config').textContent(), 'Generate config');
   assert.match(await page.locator('#project-link').textContent(), /Project repository/);
   assert.match(await page.locator('#guide-panel').textContent(), /Page Title is the name/);
@@ -908,7 +920,7 @@ try {
   assert.ok(independent(raw, footerOutput).every(path => /\.options\.links|\.layout\.priority/.test(path)));
   await closeOutput();
   await page.locator('#language-select').selectOption('en');
-  assert.match(await page.locator('#footer-links-editor').textContent(), /A full footer|Each retains native Created with Quartz/);
+  assert.match(await page.locator('#footer-links-editor').textContent(), /Native Footer retains/);
   await openPanel('properties-panel');
   assert.equal(await page.locator('#footer-link-label-0').inputValue(), '关于我们 <&"');
   await page.locator('#footer-link-url-0').fill('/about#updated');
@@ -999,22 +1011,24 @@ try {
   await page.locator('#property-position').selectOption('header');
   await page.locator('#property-enabled').uncheck();
   assert.equal(await page.locator('#property-group').isVisible(), true, 'Disabled components retain the group assignment entry point');
-  await page.locator('#property-group').fill('spacing-demo');
-  await page.locator('#property-group').press('Tab');
+  await openPanel('groups-panel');
+  await page.locator('#new-group-name').fill('spacing-demo');
+  await page.locator('[data-action="add-group"]').click();
+  await openPanel('properties-panel');
+  await page.locator('#property-group').selectOption('spacing-demo');
   assert.equal(await page.locator('#property-basis').isEnabled(), true);
-  assert.equal(await page.locator('#property-group').count(), 0, 'Joining a group enables the component and hides the group field');
+  assert.equal(await page.locator('#property-enabled').isChecked(), false, 'Group assignment never enables disabled components');
   await page.locator('#property-enabled').uncheck();
-  await page.locator('#property-group').fill('');
-  await page.locator('#property-group').press('Tab');
+  await page.locator('#property-group').selectOption('');
   assert.equal(await page.locator('#property-basis').count(), 0, 'Leaving a group removes its member controls immediately');
   await page.locator('#board-edit').click();
   await page.locator('#language-select').selectOption('zh-CN');
   assert.equal(await page.locator('#property-basis').count(), 0);
   assert.doesNotMatch(await page.locator('#properties-panel').textContent(), /组内布局（groupOptions）/);
-  assert.equal(await page.locator('#property-group').count(), 0);
+  assert.equal(await page.locator('#property-group').count(), 1);
   await page.locator('#property-enabled').uncheck();
-  await page.locator('#property-group').fill('spacing-demo');
-  await page.locator('#property-group').press('Tab');
+  await page.locator('#property-group').selectOption('spacing-demo');
+  await page.locator('#property-enabled').check();
   assert.equal(await page.locator('#property-basis').isVisible(), true, 'Joining a group reveals member controls in Edit layout');
   const groupedYaml = await generate();
   await page.locator('[data-action="close-output"]').click();
@@ -1026,7 +1040,7 @@ try {
         await page.locator(`#board-${view}`).click();
         await openPanel('properties-panel');
         assert.equal(await page.locator('#property-enabled').isChecked(), true);
-        assert.equal(await page.locator('#property-group, label[for="property-group"], #property-group-hint').count(), 0);
+        assert.equal(await page.locator('#property-group').inputValue(), 'spacing-demo');
         assert.equal(await page.locator('#property-basis').isVisible(), true, 'Enabled grouped components keep their member options');
       }
     }
@@ -1038,7 +1052,7 @@ try {
   await page.locator('#property-enabled').uncheck();
   assert.equal(await page.locator('#property-group').inputValue(), 'spacing-demo', 'Hiding the field preserves group membership');
   await page.locator('#property-enabled').check();
-  assert.equal(await page.locator('#property-group').count(), 0);
+  assert.equal(await page.locator('#property-group').count(), 1);
   await page.locator('#language-select').selectOption('en');
   await page.locator('#board-effect').click();
   for (const [selector, value] of [['#property-grow', 'false'], ['#property-shrink', 'false'], ['#property-align', 'stretch'], ['#property-justify', 'between']]) await page.locator(selector).selectOption(value);
@@ -1168,7 +1182,7 @@ try {
         assert.ok((await row.boundingBox()).height <= 38);
       }
       const colors = await page.locator('#tray-panel .tray-strip').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor));
-      assert.equal(new Set(colors).size, 4, 'Existing, new full Footer, new button and new Spacer rows use distinct colors');
+      assert.equal(new Set(colors).size, 3, 'Existing components, customizable links and Spacers use distinct colors');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
@@ -1202,7 +1216,7 @@ try {
   await page.locator('#spacer-instance-add').dispatchEvent('dragstart', { dataTransfer: creationTransfer });
   await page.locator('#slot-header > .slot-body').dispatchEvent('drop', { dataTransfer: creationTransfer, clientY: 0 });
   assert.equal(await page.locator('#slot-header [data-entry-id]').count(), 1, 'Native fallback can create a Spacer in a slot');
-  console.log('PASS compact name-only tray rows, four semantic colors, bilingual/mobile bounds, pointer-created Footer, cancelled creation and native-created Spacer');
+  console.log('PASS compact name-only tray rows, three semantic colors, bilingual/mobile bounds, pointer-created link, cancelled creation and native-created Spacer');
 
   await loadPaste(raw);
   await page.locator('#language-select').selectOption('en');
@@ -1233,13 +1247,7 @@ try {
         const tagId = await page.locator('#selected-component').inputValue();
         await page.locator('#property-enabled').check();
         const enabledTarget = page.locator(view === 'edit' ? `.frame [data-entry-id="${tagId}"]` : `[data-effect-entry="${tagId}"]`);
-        const enableOffset = edge === 'top' ? (await page.locator('.board-modes').boundingBox()).y + (await page.locator('.board-modes').boundingBox()).height + 16 : 16;
-        const enabledPosition = await enabledTarget.evaluate((node, offset) => {
-          const documentTop = node.getBoundingClientRect().top + scrollY;
-          const maximumScroll = document.documentElement.scrollHeight - innerHeight;
-          return { actual: node.getBoundingClientRect().top, expected: documentTop - Math.min(maximumScroll, Math.max(0, documentTop - offset)) };
-        }, enableOffset);
-        assert.ok(Math.abs(enabledPosition.actual - enabledPosition.expected) < 3, `Manual enable scrolls to the component within document limits: ${view} ${edge} ${viewport.width}`);
+        await assertCentered(enabledTarget);
         const beforeDisable = await page.evaluate(() => scrollY);
         await page.locator('#property-enabled').uncheck();
         assert.equal(await page.evaluate(() => scrollY), await page.evaluate(previous => Math.min(previous, Math.max(0, document.documentElement.scrollHeight - innerHeight)), beforeDisable), 'Disabling preserves scroll within the shortened document limits');
@@ -1247,9 +1255,10 @@ try {
         await page.locator('#selected-component').selectOption(titleId);
         assert.equal(await page.locator('#property-enabled').isChecked(), true);
         const target = page.locator(view === 'edit' ? `.frame [data-entry-id="${titleId}"]` : `[data-effect-entry="${titleId}"]`);
-        const top = await target.evaluate(node => node.getBoundingClientRect().top);
-        const expected = edge === 'top' ? (await page.locator('.board-modes').boundingBox()).y + (await page.locator('.board-modes').boundingBox()).height + 16 : 16;
-        assert.ok(Math.abs(top - expected) < 3, `Enabled component is brought below the dock: ${view} ${edge} ${viewport.width}`);
+        await assertCentered(target);
+        await page.evaluate(() => window.scrollBy(0, 50));
+        await page.locator('#selected-component').dispatchEvent('change');
+        await assertCentered(target);
         if (view === 'effect') {
           assert.equal(await page.locator('.effect-selected').count(), 1);
           assert.equal(await target.evaluate(node => node.classList.contains('effect-selected')), true);
@@ -1267,7 +1276,7 @@ try {
         await openPanel('groups-panel');
         await page.locator('#edit-group').selectOption('toolbar');
         const group = page.locator(view === 'edit' ? '[data-group-disclosure]' : '[data-effect-group]').filter({ hasText: view === 'edit' ? 'toolbar' : 'Search' }).first();
-        assert.ok(Math.abs((await group.boundingBox()).y - expected) < 3, `Group selection locates the actual container: ${view} ${edge} ${viewport.width}`);
+        await assertCentered(group);
         await closePanel();
         for (const type of ['footer', 'spacer']) {
           await openPanel('tray-panel');
@@ -1316,96 +1325,34 @@ try {
   assert.match(await page.locator('[data-effect-source="footer"]').textContent(), /Created with Quartz v5\.0\.0 © \d{4}/);
   assert.equal(await page.locator('[data-effect-source="footer"] [data-footer-link]').count(), 0);
   await openPanel('tray-panel');
-  const beforeFullFooter = await page.evaluate(() => scrollY);
-  await page.locator('#full-footer-instance-add').focus();
-  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#full-footer-instance-add').count(), 0);
+  await page.locator('#footer-instance-add').click();
   assert.equal(await page.locator('#property-enabled').isChecked(), false);
-  assert.equal(await page.evaluate(() => scrollY), beforeFullFooter);
-  const fullFooterId = await page.locator('#selected-component').inputValue();
-  assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 0);
-  await page.locator('[data-action="footer-links-add"]').click();
-  await page.locator('#footer-link-label-0').fill('About <&"');
-  await page.locator('#footer-link-url-0').fill('/about');
-  await page.locator('[data-action="footer-links-add"]').click();
-  assert.equal(await page.locator('#footer-link-label-0').inputValue(), 'About <&"', 'Add link preserves and saves valid drafts');
-  await page.locator('#footer-link-label-1').fill('Contact');
-  await page.locator('#footer-link-url-1').fill('mailto:hello@example.org');
-  await blurFooterLink('#footer-link-url-1');
-  await page.locator('#property-position').selectOption('header');
-  await page.locator('#property-enabled').check();
-  const fullPreview = page.locator(`[data-effect-entry="${fullFooterId}"]`);
-  assert.equal(await fullPreview.locator('[data-footer-link]').count(), 2);
-  assert.doesNotMatch(await fullPreview.textContent(), /Created with Quartz v5\.0\.0 © \d{4}/);
-  await page.locator('#footer-link-label-1').fill('About <&"');
-  await blurFooterLink('#footer-link-label-1');
-  assert.match(await status(), /unique/);
-  assert.equal(await fullPreview.locator('[data-footer-link="1"]').textContent(), 'Contact');
-  await page.locator('#footer-link-label-1').fill('Contact');
-  await page.locator('#footer-link-url-1').fill('javascript:alert(1)');
-  await blurFooterLink('#footer-link-url-1');
-  assert.match(await status(), /targets/);
-  await page.locator('#footer-link-url-1').fill('/contact');
-  await blurFooterLink('#footer-link-url-1');
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 844 });
-    for (const locale of ['zh-CN', 'en']) {
-      await page.locator('#language-select').selectOption(locale);
-      assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 2);
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    }
-  }
-  await page.locator('#footer-link-label-1').fill('Pending contact');
+  assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 1);
+  assert.equal(await page.locator('[data-action="footer-links-add"]').count(), 0);
+  await loadPaste(raw);
   await page.locator('#board-edit').click();
-  await page.locator('#board-effect').click();
-  assert.equal(await page.locator('#footer-link-label-1').inputValue(), 'Pending contact');
-  assert.equal(await page.locator('[data-action="footer-link-save"]').count(), 0);
-  await page.locator('#footer-link-url-1').fill('javascript:alert(1)');
-  await page.locator('#generate-config').dispatchEvent('click');
-  assert.equal(await page.locator('#output-dialog').isVisible(), false, 'Generation rejects an invalid pending link without needing blur');
-  assert.match(await status(), /targets/);
-  await page.locator('#footer-link-url-1').fill('/contact-pending');
-  await page.locator('#generate-config').dispatchEvent('click');
-  await page.locator('#output-dialog').waitFor({ state: 'visible' });
-  assert.match(await page.locator('#output-yaml').inputValue(), /"Pending contact": "\/contact-pending"/, 'Generation saves valid pending link edits without needing blur');
-  await page.locator('[data-action="close-output"]').click();
-  await assertDeleteButton('footer-instance-remove');
-  await page.locator('#footer-links-editor').screenshot({ path: join(screenshotDirectory, 'multiple-footer-links-mobile.png') });
-  await page.setViewportSize({ width: 1440, height: 1000 });
   await closePanel();
-  await page.locator('.effect-scroll').screenshot({ path: join(screenshotDirectory, 'multiple-footer-preview.png') });
-  await openPanel('tray-panel');
-  await page.locator('#full-footer-instance-add').click();
-  const secondFullId = await page.locator('#selected-component').inputValue();
-  await page.locator('#property-position').selectOption('afterBody');
-  await page.locator('#property-enabled').check();
-  assert.equal(await page.locator('[data-effect-source="footer"]').count(), 3);
-  const fullOutput = await generate();
-  assert.equal((fullOutput.match(/source: [^\n]*footer/g) || []).length, 3);
-  assert.doesNotMatch(fullOutput, /footerKind|full-footer|Created with/);
-  await page.locator('[data-action="close-output"]').click();
-  await openPanel('properties-panel');
-  await page.locator('[data-action="footer-instance-remove"]').click();
-  assert.equal(await page.locator(`[data-effect-entry="${secondFullId}"]`).count(), 0);
-  await loadPaste(fullOutput);
-  assert.equal(await generate(), fullOutput, 'Multiple full footers reimport without rewriting');
-  await page.locator('[data-action="close-output"]').click();
-  await page.locator('#board-edit').click();
-  await page.locator('#renumber-priorities').uncheck();
-  await openPanel('tray-panel');
-  const fullTransfer = await page.evaluateHandle(() => new DataTransfer());
-  await page.locator('#full-footer-instance-add').dispatchEvent('dragstart', { dataTransfer: fullTransfer });
-  await page.locator('#slot-afterBody > .slot-body').dispatchEvent('drop', { dataTransfer: fullTransfer, clientY: 0 });
-  await openPanel('properties-panel');
-  assert.equal(await page.locator('#property-enabled').isChecked(), true, 'Dropping a full footer creates and enables it');
-  assert.equal(await page.locator('#property-position').inputValue(), 'afterBody');
-  assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 0);
-  await page.locator('[data-action="footer-links-add"]').click();
-  await page.locator('[data-action="footer-links-add"]').click();
-  assert.equal(await page.locator('#footer-links-editor [data-footer-row]').count(), 2, 'A dropped full footer is not restricted to one button');
-  await page.locator('[data-action="footer-instance-remove"]').click();
-  assert.equal(await generate(), fullOutput, 'Removing a dropped full footer restores imported bytes');
-  await page.locator('[data-action="close-output"]').click();
-  console.log('PASS auto-saving full footers without Save links, editable imported links, repeatable footers, unchanged credits, safe link CRUD, bilingual/mobile drafts and native-only round-trip');
+  const groupTransfer = await page.evaluateHandle(() => new DataTransfer());
+  await page.locator('[data-drag-group="toolbar"] > summary .drag-grip').dispatchEvent('dragstart', { dataTransfer: groupTransfer });
+  await page.locator('#slot-header > .slot-body').dispatchEvent('drop', { dataTransfer: groupTransfer, clientY: 0 });
+  assert.equal(await page.locator('#slot-header [data-drag-group="toolbar"] [data-entry-id]').count(), 3);
+  assert.equal(await page.locator('#slot-left [data-drag-group="toolbar"]').count(), 0);
+  assert.equal(await page.locator('[data-control="group-position"]').count(), 0);
+  await page.locator('[data-drag-group="toolbar"] > summary .drag-grip').scrollIntoViewIfNeeded();
+  const groupGrip = await page.locator('[data-drag-group="toolbar"] > summary .drag-grip').boundingBox();
+  await page.mouse.move(groupGrip.x + groupGrip.width / 2, groupGrip.y + groupGrip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(groupGrip.x + 15, groupGrip.y + 15, { steps: 5 });
+  await page.locator('#slot-left > .slot-body').scrollIntoViewIfNeeded();
+  const groupDestination = await page.locator('#slot-left > .slot-body').boundingBox();
+  await page.mouse.move(groupDestination.x + groupDestination.width / 2, groupDestination.y + groupDestination.height / 2, { steps: 5 });
+  await page.mouse.up();
+  assert.equal(await page.locator('#slot-left [data-drag-group="toolbar"] [data-entry-id]').count(), 3);
+  await page.locator('[data-drag-group="toolbar"] > summary .drag-grip').focus();
+  await page.keyboard.press('Alt+ArrowUp');
+  assert.equal(await page.locator('#slot-left > .slot-body > details').first().getAttribute('data-drag-group'), 'toolbar');
+  console.log('PASS native Footer preserved, removed full-footer creation, customizable link and whole-group movement');
 
   const external = await browser.newContext({ offline: true, locale: 'en-US', viewport: { width: 1440, height: 1000 } });
   try {
